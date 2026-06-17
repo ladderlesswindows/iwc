@@ -47,4 +47,7 @@ export interface SkinProps {
 
   // Navigation
   onGoToSummary: () => void;
+
+  // Called when the user enters a different ZIP — bubbles up to page.tsx → MapPanel
+  onZipChange?: (zip: string) => void;
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { SkinProps } from "./types";
 
 // ── FF Palette ────────────────────────────────────────────────────
@@ -21,7 +22,7 @@ const C = {
 export function GameSkin(props: SkinProps) {
   const { step, goToStep, questItems, date, time, windowCount, needsEstimate,
           onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
-          slotMap, paused, onResume, onGoToSummary } = props;
+          slotMap, paused, onResume, onGoToSummary, onZipChange } = props;
 
   // ── Canvas refs ───────────────────────────────────────────────
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,6 +40,9 @@ export function GameSkin(props: SkinProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [showSlots, setShowSlots] = useState(false);
+  const [showZipInput, setShowZipInput] = useState(false);
+  const [zipInputValue, setZipInputValue] = useState("");
+  const [zipError, setZipError] = useState("");
   const typeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Canvas animation ──────────────────────────────────────────
@@ -110,8 +114,21 @@ export function GameSkin(props: SkinProps) {
 
   function handleGoToStep(s: typeof step) {
     setShowSlots(false);
+    setShowZipInput(false);
+    setZipInputValue("");
+    setZipError("");
     goToStep(s);
     typeText(dialogue(s));
+  }
+
+  function handleZipSubmit() {
+    const z = zipInputValue.trim();
+    if (!SERVICE_AREAS[z]) {
+      setZipError("Not in range. Valid: 95060 95062 95003 95018 95066 95073 95064 95065 95010");
+      return;
+    }
+    onZipChange?.(z);
+    handleGoToStep("timeslot");
   }
 
   // Auto-type on mount
@@ -134,7 +151,7 @@ export function GameSkin(props: SkinProps) {
   // ── Menu per step ─────────────────────────────────────────────
   function renderMenu() {
     switch (step) {
-      case "location": return (<>{ffBtn("1.  ✦  Yes, that's my area", () => handleGoToStep("timeslot"), true)}{ffBtn("2.  ✧  Enter a different city / ZIP", () => handleGoToStep("timeslot"))}</>);
+      case "location": return (<>{ffBtn("1.  ✦  Yes, that's my area (95060)", () => handleGoToStep("timeslot"), true)}{ffBtn("2.  ✧  Enter a different ZIP", () => { setShowZipInput(true); setZipError(""); })}{ffBtn("3.  ✧  New ZIP / Start over", () => { onZipChange?.(DEFAULT_ZIP); handleGoToStep("location"); })}</>);
       case "timeslot": return (<>{ffBtn(`1.  ✦  Perfect — keep ${date ? formatDate(date) : "July 4th"}`, () => handleGoToStep("windows"), true)}{ffBtn("2.  ✧  See other times", () => setShowSlots(v=>!v))}{ffBtn("3.  ✧  Back", () => handleGoToStep("location"))}</>);
       case "windows":  return (<>{ffBtn(`1.  ✦  ${windowCount} window${windowCount!==1?"s":""} — continue`, () => handleGoToStep("estimate"), true)}{ffBtn("2.  ✧  Back", () => handleGoToStep("timeslot"))}</>);
       case "estimate": return (<>{ffBtn("1.  ✦  No — windows only", () => { onNeedsEstimateChange(false); handleGoToStep("contact"); }, true)}{ffBtn("2.  ✧  Yes — include full estimate", () => { onNeedsEstimateChange(true); handleGoToStep("contact"); })}{ffBtn("3.  ✧  Back", () => handleGoToStep("windows"))}</>);
@@ -146,6 +163,28 @@ export function GameSkin(props: SkinProps) {
   // ── Inline controls ───────────────────────────────────────────
   function renderInline() {
     if (isTyping) return null;
+    if (step === "location" && showZipInput) return (
+      <div style={{ marginTop:8 }}>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#c9a84c", letterSpacing:1, marginBottom:5 }}>ENTER ZIP CODE</div>
+        <div style={{ display:"flex", gap:5 }}>
+          <input
+            type="text"
+            placeholder="95062…"
+            maxLength={5}
+            value={zipInputValue}
+            onChange={e => { setZipInputValue(e.target.value.replace(/\D/g,"")); setZipError(""); }}
+            onKeyDown={e => e.key === "Enter" && handleZipSubmit()}
+            style={{ ...ffInput, flex:1 }}
+          />
+          <button onClick={handleZipSubmit}
+            style={{ fontFamily:"'Cinzel',serif", fontSize:9, border:"1px solid #c9a84c", background:"transparent", color:"#c9a84c", padding:"5px 10px", cursor:"pointer", borderRadius:2 }}
+            onMouseEnter={e=>{e.currentTarget.style.background="#c9a84c";e.currentTarget.style.color="#05080f";}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color="#c9a84c";}}
+          >GO</button>
+        </div>
+        {zipError && <div style={{ fontFamily:"'Cinzel',serif", fontSize:7.5, color:"#f87171", marginTop:4, letterSpacing:0.5, lineHeight:1.5 }}>{zipError}</div>}
+      </div>
+    );
     if (step === "windows") return (
       <div style={{ display:"flex", alignItems:"center", gap:12, margin:"10px 0", justifyContent:"center" }}>
         <button onClick={()=>onWindowCountChange(Math.max(1,windowCount-1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>−</button>

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   SERVICE_AREAS, INITIAL_CAMERA, ZOOMED_CAMERA, DEFAULT_ZIP,
+  CLOCK_TOWER_95060, CLOCK_TOWER_CAMERA,
 } from "@/lib/serviceAreas";
+import type { CoverageAlert } from "@/lib/serviceAreas";
 import type { Step } from "@/components/npc/types";
 import { STEP_ORDER } from "@/components/npc/types";
 
@@ -100,13 +102,15 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
       // First time advancing past location — fly to confirmed ZIP
       const area = SERVICE_AREAS[zip];
       if (area) {
+        // 95060: dramatic zoom to the clock tower at Water St & Pacific Ave
+        const isClockTower = zip === "95060";
         map.flyTo({
-          center: area.center,
-          zoom: ZOOMED_CAMERA.zoom,
-          pitch: ZOOMED_CAMERA.pitch,
-          bearing: ZOOMED_CAMERA.bearing,
-          duration: ZOOMED_CAMERA.duration,
-          curve: ZOOMED_CAMERA.curve,
+          center: isClockTower ? CLOCK_TOWER_95060 : area.center,
+          zoom:     isClockTower ? CLOCK_TOWER_CAMERA.zoom     : ZOOMED_CAMERA.zoom,
+          pitch:    isClockTower ? CLOCK_TOWER_CAMERA.pitch    : ZOOMED_CAMERA.pitch,
+          bearing:  isClockTower ? CLOCK_TOWER_CAMERA.bearing  : ZOOMED_CAMERA.bearing,
+          duration: isClockTower ? CLOCK_TOWER_CAMERA.duration : ZOOMED_CAMERA.duration,
+          curve:    isClockTower ? CLOCK_TOWER_CAMERA.curve    : ZOOMED_CAMERA.curve,
           essential: true,
         });
         setTimeout(() => {
@@ -182,6 +186,13 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           >
             ▲ {area.name} · {zip}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Coverage alert — top-right, appears after fly animation */}
+      <AnimatePresence>
+        {stepIdx > 0 && area?.alert && (
+          <CoverageAlertCard key={zip} alert={area.alert} />
         )}
       </AnimatePresence>
 
@@ -411,6 +422,51 @@ function SummaryOverlay({ date, time, windowCount, needsEstimate, zip, step }: {
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.72)", fontWeight: 500 }}>
               {value}
             </span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Coverage Alert Overlay ────────────────────────────────────────────
+
+function CoverageAlertCard({ alert }: { alert: CoverageAlert }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 14 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 14 }}
+      transition={{ duration: 0.45, delay: 1.8, ease: "easeOut" }}
+      style={{
+        position: "absolute", top: 14, right: 16,
+        pointerEvents: "none", maxWidth: 230,
+      }}
+    >
+      <div style={{
+        background: "rgba(5,5,8,0.82)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(251,191,36,0.25)",
+        borderRadius: 10,
+        padding: "10px 13px",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+      }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6, marginBottom: 8,
+        }}>
+          <span style={{ fontSize: 11, lineHeight: 1 }}>⚠</span>
+          <span style={{
+            fontSize: 8.5, fontWeight: 700, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "rgba(251,191,36,0.85)",
+          }}>{alert.headline}</span>
+        </div>
+        {alert.notes.map((note, i) => (
+          <div key={i} style={{
+            display: "flex", gap: 6, marginBottom: i < alert.notes.length - 1 ? 5 : 0,
+          }}>
+            <span style={{ fontSize: 9, color: "rgba(251,191,36,0.5)", flexShrink: 0, marginTop: 1 }}>·</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", lineHeight: 1.45 }}>{note}</span>
           </div>
         ))}
       </div>

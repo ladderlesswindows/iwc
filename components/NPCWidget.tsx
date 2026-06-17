@@ -35,13 +35,15 @@ interface Props {
   onGoToSummary: () => void;
   // Map panel reacts to step changes
   onStepChange?: (step: Step) => void;
+  // Called when user selects a different ZIP in CleanSkin
+  onZipChange?: (zip: string) => void;
 }
 
 export function NPCWidget(props: Props) {
   const { date, time, windowCount, needsEstimate, estimateDeadline,
           onDateChange, onTimeChange, onWindowCountChange,
           onNeedsEstimateChange, onEstimateDeadlineChange,
-          paused, onResume, onGoToSummary, onStepChange } = props;
+          paused, onResume, onGoToSummary, onStepChange, onZipChange } = props;
 
   // ── Panel state ───────────────────────────────────────────────
   const [skin, setSkin] = useState<Skin>("game");
@@ -75,7 +77,7 @@ export function NPCWidget(props: Props) {
     date, time, windowCount, needsEstimate, estimateDeadline, slotMap,
     onDateChange, onTimeChange, onWindowCountChange,
     onNeedsEstimateChange, onEstimateDeadlineChange,
-    paused, onResume, onGoToSummary,
+    paused, onResume, onGoToSummary, onZipChange,
   };
 
   // ── Skin backgrounds ──────────────────────────────────────────
@@ -126,7 +128,7 @@ export function NPCWidget(props: Props) {
             b.style.color = skin === "game" ? "#cc3333" : "rgba(167,139,250,0.8)";
           }}
         >
-          {skin === "game" ? "OFF" : "▶ GAME"}
+          {skin === "game" ? "Leave Gameplay Path" : "▶ GAME"}
         </button>
       </div>
 

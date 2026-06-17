@@ -1,14 +1,41 @@
 // Service areas for Ladderless Windows — 9 ZIP codes, Santa Cruz County
 // center: [longitude, latitude] (Mapbox order)
 
+export interface CoverageAlert {
+  headline: string;
+  notes: string[];
+}
+
 export interface ServiceArea {
   zip: string;
   name: string;
   center: [number, number];
+  alert?: CoverageAlert;
 }
 
+// Pacific Ave & Water St landmark (the clock tower), used for dramatic 95060 zoom
+export const CLOCK_TOWER_95060: [number, number] = [-122.0285, 36.9742];
+
+export const CLOCK_TOWER_CAMERA = {
+  zoom: 17,
+  pitch: 62,
+  bearing: -20,
+  duration: 5500,
+  curve: 1.8,
+};
+
 export const SERVICE_AREAS: Record<string, ServiceArea> = {
-  "95060": { zip: "95060", name: "Santa Cruz",        center: [-122.0308,  36.9741] },
+  "95060": {
+    zip: "95060", name: "Santa Cruz", center: [-122.0308, 36.9741],
+    alert: {
+      headline: "Coverage notes — 95060",
+      notes: [
+        "1 window minimum for Santa Cruz addresses",
+        "No coverage: Bonny Doon area",
+        "No coverage: Empire Grade past 3959",
+      ],
+    },
+  },
   "95062": { zip: "95062", name: "Live Oak",           center: [-121.9934,  36.9657] },
   "95003": { zip: "95003", name: "Aptos",              center: [-121.8956,  36.9771] },
   "95018": { zip: "95018", name: "Felton",             center: [-122.0721,  37.0513] },

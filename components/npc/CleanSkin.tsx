@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { SkinProps, Step } from "./types";
 
 // ── Design tokens matching the main site ──────────────────────────
@@ -107,16 +108,45 @@ function OptionPill({ label, selected, onClick }: { label: string; selected: boo
 export function CleanSkin(props: SkinProps) {
   const { step, goToStep, questItems, date, time, windowCount, needsEstimate,
           onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
-          slotMap, onGoToSummary } = props;
+          slotMap, onGoToSummary, onZipChange } = props;
 
   const [showSlots, setShowSlots] = useState(false);
   const [localEstimate, setLocalEstimate] = useState(needsEstimate);
+
+  // ZIP input state for the "different area" path
+  const [showZipInput, setShowZipInput] = useState(false);
+  const [zipInputValue, setZipInputValue] = useState("");
+  const [zipError, setZipError] = useState("");
 
   const slot = date
     ? `${formatDate(date)} at ${formatTime(time)}`
     : `${formatDate(FALLBACK_DATE)} at ${formatTime(FALLBACK_TIME)}`;
 
-  function advance(s: Step) { setShowSlots(false); goToStep(s); }
+  function advance(s: Step) {
+    setShowSlots(false);
+    setShowZipInput(false);
+    setZipInputValue("");
+    setZipError("");
+    goToStep(s);
+  }
+
+  function startOver() {
+    setShowZipInput(false);
+    setZipInputValue("");
+    setZipError("");
+    onZipChange?.(DEFAULT_ZIP);
+    advance("location");
+  }
+
+  function handleZipSubmit() {
+    const z = zipInputValue.trim();
+    if (!SERVICE_AREAS[z]) {
+      setZipError("ZIP not in our service area. Try: 95060, 95062, 95003, 95018, 95066, 95073, 95064, 95065, 95010");
+      return;
+    }
+    onZipChange?.(z);
+    advance("timeslot");
+  }
 
   // ── Step: what's completed vs current vs upcoming ─────────────
   const STEPS: Step[] = ["location","timeslot","windows","estimate","contact","complete"];
@@ -125,15 +155,51 @@ export function CleanSkin(props: SkinProps) {
   function renderCurrentQuestion() {
     switch (step) {
       case "location": return (
-        <ActiveCard>
-          <CardLabel text="Service Area" />
-          <p style={{ fontSize:13, color:TEXT, marginBottom:4 }}>Is <strong style={{ color:ACCENT }}>Santa Cruz, CA 95060</strong> the correct service area?</p>
-          <p style={{ fontSize:11, color:TEXT_DIM, marginBottom:12 }}>We'll confirm the exact address on the next screen.</p>
-          <AccentBtn label="✓ Yes, that's correct" onClick={() => advance("timeslot")} />
-          <div style={{ display:"flex", marginTop:8 }}>
-            <GhostBtn label="Use a different city / ZIP" onClick={() => advance("timeslot")} />
+        <>
+          {/* Welcome header above the location card */}
+          <div style={{ marginBottom:14, paddingBottom:14, borderBottom:`1px solid rgba(167,139,250,0.1)` }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"rgba(255,255,255,0.9)", lineHeight:1.4, marginBottom:5 }}>
+              Welcome to Instant Window Cleaning for Ladderless Windows
+            </div>
+            <div style={{ fontSize:11, color:TEXT_DIM, lineHeight:1.45 }}>
+              Book a window cleaning + full estimate in 30 seconds!
+            </div>
           </div>
-        </ActiveCard>
+
+          <ActiveCard>
+            <CardLabel text="Service Area" />
+            <p style={{ fontSize:13, color:TEXT, marginBottom:4 }}>Is <strong style={{ color:ACCENT }}>Santa Cruz, CA 95060</strong> the correct service area?</p>
+            <p style={{ fontSize:11, color:TEXT_DIM, marginBottom:12 }}>We'll zoom in and confirm the location on the map.</p>
+            <AccentBtn label="✓ Yes, that's my area (95060)" onClick={() => advance("timeslot")} />
+            <div style={{ display:"flex", marginTop:8 }}>
+              <GhostBtn label="Enter a different ZIP" onClick={() => { setShowZipInput(true); setZipError(""); }} />
+            </div>
+
+            {showZipInput && (
+              <div style={{ marginTop:14, paddingTop:12, borderTop:`1px solid rgba(255,255,255,0.07)` }}>
+                <div style={{ fontSize:10, fontWeight:600, letterSpacing:"0.1em", color:ACCENT, marginBottom:8, textTransform:"uppercase" }}>Enter your ZIP code</div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <input
+                    type="text"
+                    placeholder="e.g. 95062"
+                    maxLength={5}
+                    value={zipInputValue}
+                    onChange={e => { setZipInputValue(e.target.value.replace(/\D/g,"")); setZipError(""); }}
+                    onKeyDown={e => e.key === "Enter" && handleZipSubmit()}
+                    style={{ ...fieldInput, flex:1, marginBottom:0, fontSize:14, fontWeight:600 }}
+                  />
+                  <button
+                    onClick={handleZipSubmit}
+                    style={{ flexShrink:0, background:ACCENT, color:"#08080e", border:"none", borderRadius:10, padding:"9px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}
+                  >Go →</button>
+                </div>
+                {zipError && (
+                  <p style={{ fontSize:10, color:"#f87171", marginTop:6, lineHeight:1.5 }}>{zipError}</p>
+                )}
+              </div>
+            )}
+          </ActiveCard>
+        </>
       );
 
       case "timeslot": return (
@@ -233,11 +299,20 @@ export function CleanSkin(props: SkinProps) {
   return (
     <div style={{ padding:"16px 14px 20px", display:"flex", flexDirection:"column", gap:0, height:"100%", overflowY:"auto", background:"#080810" }}>
       {/* Header */}
-      <div style={{ marginBottom:14 }}>
-        <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.18em", textTransform:"uppercase", color:TEXT_FAINT, marginBottom:2 }}>
-          Booking Guide
+      <div style={{ marginBottom:14, display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:8 }}>
+        <div>
+          <div style={{ fontSize:9, fontWeight:700, letterSpacing:"0.18em", textTransform:"uppercase", color:TEXT_FAINT, marginBottom:2 }}>
+            Booking Guide
+          </div>
+          <div style={{ fontSize:13, fontWeight:600, color:TEXT }}>Complete your booking below</div>
         </div>
-        <div style={{ fontSize:13, fontWeight:600, color:TEXT }}>Complete your booking below</div>
+        {step !== "location" && (
+          <button onClick={startOver}
+            style={{ background:"transparent", border:"none", color:TEXT_DIM, fontSize:10, cursor:"pointer", paddingTop:3, whiteSpace:"nowrap", flexShrink:0, textDecoration:"underline", textUnderlineOffset:2 }}
+            onMouseEnter={e=>e.currentTarget.style.color=ACCENT}
+            onMouseLeave={e=>e.currentTarget.style.color=TEXT_DIM}
+          >↩ New ZIP</button>
+        )}
       </div>
 
       {/* Completed steps */}

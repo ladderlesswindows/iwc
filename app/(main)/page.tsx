@@ -11,7 +11,7 @@ import { WindowCounter } from "@/components/WindowCounter";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { motion } from "framer-motion";
 import { FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
-import { detectZip, DEFAULT_ZIP } from "@/lib/serviceAreas";
+import { DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { Step } from "@/components/npc/types";
 
 // MapPanel uses Mapbox GL — must not SSR
@@ -36,13 +36,11 @@ export default function HomePage() {
   // ── NPC state ─────────────────────────────────────────────────
   const [npcPaused, setNpcPaused] = useState(false);
   const [activeStep, setActiveStep] = useState<Step>("location");
+  const [selectedZip, setSelectedZip] = useState(DEFAULT_ZIP);
 
   const pauseNPC = useCallback(() => {
     if (!npcPaused) setNpcPaused(true);
   }, [npcPaused]);
-
-  // Detect which service ZIP matches the address (for map flyTo)
-  const selectedZip = detectZip(address) || DEFAULT_ZIP;
 
   // ── Booking navigation ────────────────────────────────────────
   function buildParams(extra: Record<string, string> = {}) {
@@ -200,6 +198,7 @@ export default function HomePage() {
             onResume={() => setNpcPaused(false)}
             onGoToSummary={() => router.push(`/summary?${buildParams().toString()}`)}
             onStepChange={setActiveStep}
+            onZipChange={setSelectedZip}
           />
         </div>
       </div>
