@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
-import { getAvailableSlots, formatTime, formatDate, getNext14Days } from "@/lib/availability";
+import { getAvailableSlots, formatTime, formatDate, getNextDays } from "@/lib/availability";
 
 interface Props {
   selectedDate: string;
@@ -23,7 +23,7 @@ export function SlotPicker({ selectedDate, selectedTime, onDateChange, onTimeCha
       setSlotMap(map);
       // Only auto-select if no date already chosen (e.g. from NPC or defaults)
       if (!selectedDate) {
-        const dates = getNext14Days();
+        const dates = getNextDays();
         for (const d of dates) {
           if (map[d]?.length > 0) {
             onDateChange(d);
@@ -36,7 +36,7 @@ export function SlotPicker({ selectedDate, selectedTime, onDateChange, onTimeCha
     });
   }, []);
 
-  const dates = getNext14Days();
+  const dates = getNextDays();
   const timesForSelected = selectedDate ? (slotMap[selectedDate] ?? []) : [];
 
   return (

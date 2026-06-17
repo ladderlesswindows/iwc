@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatDate, formatTime, getNext14Days, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
 import type { SkinProps, Step } from "./types";
 
 // ── Design tokens matching the main site ──────────────────────────
@@ -146,7 +146,7 @@ export function CleanSkin(props: SkinProps) {
           </div>
           {showSlots && (
             <div style={{ maxHeight:140, overflowY:"auto", marginTop:10, border:`1px solid ${CARD_BORDER}`, borderRadius:10, padding:"8px 10px", background:"rgba(0,0,0,0.2)" }}>
-              {getNext14Days().map(d => {
+              {getNextDays().map(d => {
                 const slots = slotMap[d] ?? [];
                 if (!slots.length) return null;
                 return (

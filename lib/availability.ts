@@ -22,10 +22,6 @@ export function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 }
 
-export function getNext14Days(): string[] {
-  return getNextDays(30);
-}
-
 export function getNextDays(n = 30): string[] {
   const days: string[] = [];
   const d = new Date();
@@ -72,7 +68,7 @@ export function buildSlotMap(
 }
 
 export async function getAvailableSlots() {
-  const dates = getNext14Days();
+  const dates = getNextDays();
   const rows = await fetchAvailability(dates);
   return buildSlotMap(dates, rows);
 }

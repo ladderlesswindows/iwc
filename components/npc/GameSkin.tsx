@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatDate, formatTime, getNext14Days, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
 import type { SkinProps } from "./types";
 
 // ── FF Palette ────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ export function GameSkin(props: SkinProps) {
   // ── Slot picker ───────────────────────────────────────────────
   function renderSlotPicker() {
     if (!showSlots || step !== "timeslot") return null;
-    const dates = getNext14Days();
+    const dates = getNextDays();
     return (
       <div style={{ maxHeight:130, overflowY:"auto", border:"1px solid #3a5070", borderRadius:2, padding:8, background:"rgba(5,10,30,0.97)", margin:"6px 0" }}>
         {dates.map(d=>{const slots=slotMap[d]??[];if(!slots.length)return null;return(

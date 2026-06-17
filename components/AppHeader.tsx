@@ -1,11 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { HamburgerMenu } from "./HamburgerMenu";
-
-interface Props {
-  onWebviewClick?: () => void;
-}
 
 function WindowPaneIcon() {
   return (
@@ -13,13 +9,12 @@ function WindowPaneIcon() {
       <rect x="1" y="1" width="20" height="20" rx="3" stroke="#a78bfa" strokeOpacity="0.6" strokeWidth="1.5"/>
       <line x1="11" y1="1" x2="11" y2="21" stroke="#a78bfa" strokeOpacity="0.6" strokeWidth="1.2"/>
       <line x1="1" y1="11" x2="21" y2="11" stroke="#a78bfa" strokeOpacity="0.6" strokeWidth="1.2"/>
-      {/* Squeegee arc */}
       <path d="M 4 5 Q 6 3.5 8 5" stroke="#a78bfa" strokeOpacity="0.5" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
     </svg>
   );
 }
 
-export function AppHeader({ onWebviewClick }: Props) {
+export function AppHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -52,20 +47,13 @@ export function AppHeader({ onWebviewClick }: Props) {
           </span>
         </div>
 
-        {/* Right: × */}
+        {/* Right: about link */}
         <a href="/about" style={{ fontSize: 17, color: "rgba(255,255,255,0.28)", textDecoration: "none", padding: "8px" }} aria-label="About">
           ✕
         </a>
       </header>
 
-      <HamburgerMenu
-        isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onWebviewClick={() => {
-          setMenuOpen(false);
-          onWebviewClick?.();
-        }}
-      />
+      <HamburgerMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
   );
 }
