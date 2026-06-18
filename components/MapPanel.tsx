@@ -23,13 +23,14 @@ interface Props {
   slotMap: Record<string, string[]>;
   onZipChange?: (zip: string) => void;
   onGo?: () => void;
+  onOpen?: () => void;
   address?: string;
   onWindowCountChange?: (n: number) => void;
   onDateChange?: (d: string) => void;
   onTimeChange?: (t: string) => void;
 }
 
-export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, address, onWindowCountChange, onDateChange, onTimeChange }: Props) {
+export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -38,10 +39,13 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
   const [overlaysVisible, setOverlaysVisible] = useState(false);
   const onZipChangeRef = useRef(onZipChange);
   const onGoRef = useRef(onGo);
+  const onOpenRef = useRef(onOpen);
   const geocodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedForZipRef = useRef<string | null>(null);
+  const stepIdxRef = useRef(0);
   useEffect(() => { onZipChangeRef.current = onZipChange; }, [onZipChange]);
   useEffect(() => { onGoRef.current = onGo; }, [onGo]);
+  useEffect(() => { onOpenRef.current = onOpen; }, [onOpen]);
 
   // ── Geocode address → flyTo ─────────────────────────────────────────
   useEffect(() => {
@@ -72,6 +76,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
 
   const zip = selectedZip || DEFAULT_ZIP;
   const stepIdx = STEP_ORDER.indexOf(step);
+  useEffect(() => { stepIdxRef.current = stepIdx; }, [stepIdx]);
 
   // ── Auto-set window count to zip minimum when entering timeslot step ──
   useEffect(() => {
@@ -145,6 +150,10 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           setMapLoaded(true);
           setOverlaysVisible(true);
           markersRef.current.forEach(m => { m.getElement().style.display = "block"; });
+          // Clicking the map background (not the dots) opens the panel
+          map.on("click", () => {
+            if (stepIdxRef.current === 0) onOpenRef.current?.();
+          });
         }, 9300);
       });
 

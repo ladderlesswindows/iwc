@@ -74,6 +74,7 @@ export default function HomePage() {
           needsEstimate={needsEstimate}
           onZipChange={setSelectedZip}
           onGo={() => { setPanelVisible(true); setGoTrigger(t => t + 1); }}
+          onOpen={() => setPanelVisible(true)}
           address={address}
           onWindowCountChange={setWindowCount}
           onDateChange={setSelectedDate}
