@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { SkinProps } from "./types";
 
@@ -22,7 +23,9 @@ const C = {
 export function GameSkin(props: SkinProps) {
   const { step, goToStep, questItems, date, time, windowCount, needsEstimate,
           onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
-          slotMap, paused, onResume, onGoToSummary, onZipChange, mode } = props;
+          slotMap, paused, onResume, onGoToSummary, onZipChange, mode,
+          firstName, phone, email,
+          onFirstNameChange, onPhoneChange, onEmailChange } = props;
 
   // Light mode only affects the Q&A panel — canvas is always dark
   const isLight = mode === "light";
@@ -116,7 +119,7 @@ export function GameSkin(props: SkinProps) {
       case "location": return `Greetings, traveler.\nI see your booking is set for Santa Cruz, CA 95060.\nIs that the correct area for our crew?`;
       case "timeslot": return `Excellent. Your slot is held for ${slot}.\nShall we keep this time, or would you prefer another?`;
       case "windows":  return `Very well. How many windows shall we cleanse today?\nEach pane: $22. No ladders, no mess, no hidden fees.`;
-      case "estimate": return `Understood — ${windowCount} window${windowCount!==1?"s":""} at $${windowCount*22}.\nShall I also arrange a full-house estimate?\nNo extra charge for the visit.`;
+      case "estimate": return `Understood — ${windowCount} window${windowCount!==1?"s":""} at $${windowCount*PRICE_PER_WINDOW}.\nShall I also arrange a full-house estimate?\nNo extra charge for the visit.`;
       case "contact":  return `One last thing — any name or contact for our records?\nAll fields are optional. We'll find you by address.`;
       case "complete": return `The quest is complete, traveler.\nYour order awaits — press Book Now when ready.\nMay your windows shine like crystal.`;
     }
@@ -163,7 +166,7 @@ export function GameSkin(props: SkinProps) {
     switch (step) {
       case "location": return (<>{ffBtn("1.  ✦  Yes, that's my area (95060)", () => handleGoToStep("timeslot"), true)}{ffBtn("2.  ✧  Enter a different ZIP", () => { setShowZipInput(true); setZipError(""); })}{ffBtn("3.  ✧  New ZIP / Start over", () => { onZipChange?.(DEFAULT_ZIP); handleGoToStep("location"); })}</>);
       case "timeslot": return (<>{ffBtn(`1.  ✦  Perfect — keep ${date ? formatDate(date) : "July 4th"}`, () => handleGoToStep("windows"), true)}{ffBtn("2.  ✧  See other times", () => setShowSlots(v=>!v))}{ffBtn("3.  ✧  Back", () => handleGoToStep("location"))}</>);
-      case "windows":  return (<>{ffBtn(`1.  ✦  ${windowCount} window${windowCount!==1?"s":""} — continue`, () => handleGoToStep("estimate"), true)}{ffBtn("2.  ✧  Back", () => handleGoToStep("timeslot"))}</>);
+      case "windows":  return (<>{ffBtn(`1.  ✦  ${windowCount}w · $${windowCount*PRICE_PER_WINDOW} — continue`, () => handleGoToStep("estimate"), true)}{ffBtn("2.  ✧  Back", () => handleGoToStep("timeslot"))}</>);
       case "estimate": return (<>{ffBtn("1.  ✦  No — windows only", () => { onNeedsEstimateChange(false); handleGoToStep("contact"); }, true)}{ffBtn("2.  ✧  Yes — include full estimate", () => { onNeedsEstimateChange(true); handleGoToStep("contact"); })}{ffBtn("3.  ✧  Back", () => handleGoToStep("windows"))}</>);
       case "contact":  return (<>{ffBtn("1.  ✦  Done — review booking", () => handleGoToStep("complete"), true)}{ffBtn("2.  ✧  Skip", () => handleGoToStep("complete"))}{ffBtn("3.  ✧  Back", () => handleGoToStep("estimate"))}</>);
       case "complete": return (<>{ffBtn("1.  ✦  Go straight to checkout", onGoToSummary, true)}{ffBtn("2.  ✧  Start over", () => handleGoToStep("location"))}</>);
@@ -197,17 +200,17 @@ export function GameSkin(props: SkinProps) {
     );
     if (step === "windows") return (
       <div style={{ display:"flex", alignItems:"center", gap:12, margin:"10px 0", justifyContent:"center" }}>
-        <button onClick={()=>onWindowCountChange(Math.max(1,windowCount-1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>−</button>
+        <button onClick={()=>onWindowCountChange(Math.max(MIN_WINDOWS,windowCount-1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>−</button>
         <span style={{ fontFamily:"'Cinzel',serif", fontSize:20, color:"#c9a84c", minWidth:24, textAlign:"center" }}>{windowCount}</span>
-        <button onClick={()=>onWindowCountChange(Math.min(20,windowCount+1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>+</button>
-        <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#7ec8e3", letterSpacing:1 }}>${windowCount*22} total</span>
+        <button onClick={()=>onWindowCountChange(Math.min(MAX_WINDOWS,windowCount+1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>+</button>
+        <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#7ec8e3", letterSpacing:1 }}>${windowCount*PRICE_PER_WINDOW} total</span>
       </div>
     );
     if (step === "contact") return (
       <div style={{ display:"flex", flexDirection:"column", gap:5, margin:"8px 0" }}>
-        <input type="text" placeholder="Name (optional)" style={ffInput} />
-        <input type="tel" placeholder="Phone (optional)" style={ffInput} />
-        <input type="email" placeholder="Email (optional)" style={ffInput} />
+        <input type="text" placeholder="Name (optional)" value={firstName ?? ""} onChange={e => onFirstNameChange?.(e.target.value)} style={ffInput} />
+        <input type="tel" placeholder="Phone (optional)" value={phone ?? ""} onChange={e => onPhoneChange?.(e.target.value)} style={ffInput} />
+        <input type="email" placeholder="Email (optional)" value={email ?? ""} onChange={e => onEmailChange?.(e.target.value)} style={ffInput} />
       </div>
     );
     return null;

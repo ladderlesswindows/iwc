@@ -1,17 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { NPCWidget } from "@/components/NPCWidget";
 import { AppHeader } from "@/components/AppHeader";
-import { SlotPicker } from "@/components/SlotPicker";
-import { EstimateToggle } from "@/components/EstimateToggle";
-import { WindowCounter } from "@/components/WindowCounter";
-import { ReviewsSection } from "@/components/ReviewsSection";
 import { MobileView } from "@/components/MobileView";
 import { motion, AnimatePresence } from "framer-motion";
-import { FALLBACK_DATE, FALLBACK_TIME, formatDate, formatTime } from "@/lib/availability";
+import { FALLBACK_DATE, FALLBACK_TIME, formatDate, formatTime, getAvailableSlots } from "@/lib/availability";
+import { PRICE_PER_WINDOW } from "@/lib/constants";
 import { DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { Step } from "@/components/npc/types";
 
@@ -34,6 +31,10 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
 
+  // ── Slot availability (fetched once, passed to both desktop NPC and mobile) ──
+  const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
+  useEffect(() => { getAvailableSlots().then(setSlotMap); }, []);
+
   // ── NPC state ─────────────────────────────────────────────────
   const [npcPaused, setNpcPaused] = useState(false);
   const [activeStep, setActiveStep] = useState<Step>("location");
@@ -47,10 +48,6 @@ export default function HomePage() {
     setReviewMode(true);
   }
 
-  const pauseNPC = useCallback(() => {
-    if (!npcPaused) setNpcPaused(true);
-  }, [npcPaused]);
-
   // ── Booking navigation ────────────────────────────────────────
   function buildParams(extra: Record<string, string> = {}) {
     return new URLSearchParams({
@@ -62,103 +59,6 @@ export default function HomePage() {
       ...extra,
     });
   }
-
-  function handleBook() {
-    if (!selectedDate || !selectedTime || !address.trim()) return;
-    router.push(`/summary?${buildParams().toString()}`);
-  }
-
-  const canBook = Boolean(selectedDate && selectedTime && address.trim());
-
-  // ── Mobile form column ────────────────────────────────────────
-  const formColumn = (
-    <div
-      className="flex flex-col"
-      style={{ minHeight: "100dvh" }}
-      onPointerDown={pauseNPC}
-    >
-      <AppHeader />
-
-      <main className="flex-1 flex flex-col gap-3 px-4 pb-8" style={{ paddingTop: 72 }}>
-        <SlotPicker
-          selectedDate={selectedDate}
-          selectedTime={selectedTime}
-          onDateChange={setSelectedDate}
-          onTimeChange={setSelectedTime}
-        />
-
-        <EstimateToggle
-          needsEstimate={needsEstimate}
-          estimateDeadline={estimateDeadline}
-          onChange={setNeedsEstimate}
-          onDeadlineChange={setEstimateDeadline}
-        />
-
-        <motion.div
-          className="glass-card p-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.16 }}
-        >
-          <WindowCounter count={windowCount} onChange={setWindowCount} />
-
-          <div className="mb-3">
-            <label className="field-label" htmlFor="address">Service Address *</label>
-            <input id="address" className="field-input mt-1" type="text"
-              placeholder="123 Main St, Santa Cruz, CA 95060"
-              value={address} onChange={(e) => setAddress(e.target.value)}
-              autoComplete="street-address" />
-          </div>
-
-          <div className="flex gap-2 mb-3">
-            <div className="flex-1">
-              <label className="field-label" htmlFor="firstName">First Name</label>
-              <input id="firstName" className="field-input mt-1" type="text" placeholder="Sam"
-                value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" />
-            </div>
-            <div className="flex-1">
-              <label className="field-label" htmlFor="lastName">Last Name</label>
-              <input id="lastName" className="field-input mt-1" type="text" placeholder="Taylor"
-                value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" />
-            </div>
-          </div>
-
-          <div className="flex gap-2 mb-3">
-            <div className="flex-1">
-              <label className="field-label" htmlFor="phone">Phone</label>
-              <input id="phone" className="field-input mt-1" type="tel" placeholder="(831) 555-0100"
-                value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
-            </div>
-            <div className="flex-1">
-              <label className="field-label" htmlFor="email">Email</label>
-              <input id="email" className="field-input mt-1" type="email" placeholder="you@email.com"
-                value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <label className="field-label" htmlFor="notes">Notes</label>
-            <textarea id="notes" className="field-input mt-1" rows={2}
-              placeholder="Gate code, special instructions…"
-              value={notes} onChange={(e) => setNotes(e.target.value)} style={{ resize: "none" }} />
-          </div>
-
-          <button className="book-btn w-full" onClick={handleBook} disabled={!canBook}
-            style={{ opacity: canBook ? 1 : 0.45, cursor: canBook ? "pointer" : "not-allowed" }}>
-            Review &amp; Book — ${windowCount * 22}
-          </button>
-
-          {!canBook && (
-            <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textAlign: "center", marginTop: 6 }}>
-              Select a slot and enter your address to continue
-            </p>
-          )}
-        </motion.div>
-      </main>
-
-      <ReviewsSection />
-    </div>
-  );
 
   return (
     <>
@@ -176,6 +76,9 @@ export default function HomePage() {
           onGo={() => { setPanelVisible(true); setGoTrigger(t => t + 1); }}
           address={address}
           onWindowCountChange={setWindowCount}
+          onDateChange={setSelectedDate}
+          onTimeChange={setSelectedTime}
+          slotMap={slotMap}
         />
 
         {/* Floating NPC panel — slides in on GO! */}
@@ -231,6 +134,7 @@ export default function HomePage() {
                 onGoToSummary={handleGoToReview}
                 onStepChange={setActiveStep}
                 onZipChange={setSelectedZip}
+                slotMap={slotMap}
                 goTrigger={goTrigger}
               />
             </motion.div>
@@ -276,7 +180,7 @@ export default function HomePage() {
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.82)" }}>
                   <span style={{ color: "rgba(126,200,227,0.5)", marginRight: 10 }}>🪟</span>
                   {windowCount} window{windowCount !== 1 ? "s" : ""} ·{" "}
-                  <span style={{ color: "rgba(126,200,227,0.85)", fontWeight: 700 }}>${windowCount * 22}</span>
+                  <span style={{ color: "rgba(126,200,227,0.85)", fontWeight: 700 }}>${windowCount * PRICE_PER_WINDOW}</span>
                 </div>
                 {address.trim() && !/^Santa Cruz/.test(address) && (
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
@@ -341,6 +245,7 @@ export default function HomePage() {
           onPhoneChange={setPhone}
           onEmailChange={setEmail}
           onNotesChange={setNotes}
+          slotMap={slotMap}
           onGoToSummary={() => router.push(`/summary?${buildParams().toString()}`)}
         />
       </div>

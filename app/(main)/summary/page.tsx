@@ -6,13 +6,8 @@ import { motion } from "framer-motion";
 import { Check, ChevronLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AppHeader } from "@/components/AppHeader";
-import { formatDate, formatTime } from "@/lib/availability";
-
-function formatPhone(p: string) {
-  const d = p.replace(/\D/g, "");
-  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
-  return p;
-}
+import { formatDate, formatTime, formatPhone } from "@/lib/availability";
+import { PRICE_PER_WINDOW } from "@/lib/constants";
 
 function SummaryContent() {
   const router = useRouter();
@@ -20,7 +15,7 @@ function SummaryContent() {
 
   const date = params.get("date") ?? "";
   const time = params.get("time") ?? "";
-  const windows = Number(params.get("windows") ?? 4);
+  const windows = Number(params.get("windows") ?? 1);
   const address = params.get("address") ?? "";
   const firstName = params.get("firstName") ?? "";
   const lastName = params.get("lastName") ?? "";
@@ -29,7 +24,7 @@ function SummaryContent() {
   const notes = params.get("notes") ?? "";
   const needsEstimate = params.get("needsEstimate") === "true";
   const estimateDeadline = params.get("estimateDeadline") ?? "";
-  const total = windows * 22;
+  const total = windows * PRICE_PER_WINDOW;
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -122,7 +117,7 @@ function SummaryContent() {
         >
           <Row label="Date" value={formatDate(date)} />
           <Row label="Time" value={formatTime(time)} />
-          <Row label="Windows" value={`${windows} (@ $22 each)`} />
+          <Row label="Windows" value={`${windows} (@ $${PRICE_PER_WINDOW} each)`} />
           <Row label="Address" value={address} />
           {(firstName || lastName) && <Row label="Name" value={`${firstName} ${lastName}`.trim()} />}
           {phone && <Row label="Phone" value={formatPhone(phone)} />}
@@ -194,7 +189,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function SummaryPage() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <SummaryContent />
     </Suspense>
   );

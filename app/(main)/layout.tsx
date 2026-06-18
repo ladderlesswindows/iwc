@@ -1,3 +1,4 @@
+import "mapbox-gl/dist/mapbox-gl.css";
 import { AppWrapper } from "@/components/AppWrapper";
 import { SparkleBackground } from "@/components/SparkleBackground";
 

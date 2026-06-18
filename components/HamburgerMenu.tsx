@@ -11,14 +11,13 @@ interface Props {
 
 function VideoModal({ onClose }: { onClose: () => void }) {
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex flex-col"
-        style={{ background: "rgba(0,0,0,0.95)" }}
-      >
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex flex-col"
+      style={{ background: "rgba(0,0,0,0.95)" }}
+    >
         <button
           onClick={onClose}
           className="absolute top-12 right-5 z-10 text-white p-2"
@@ -40,13 +39,12 @@ function VideoModal({ onClose }: { onClose: () => void }) {
           </video>
         </div>
       </motion.div>
-    </AnimatePresence>
   );
 }
 
 const NAV_ITEMS = [
   { label: "About", href: "/about" },
-  { label: "▶  How it works", action: "video" as const, pill: true },
+  { label: "▶  How it works", action: "video" as const },
 ];
 
 export function HamburgerMenu({ isOpen, onClose }: Props) {
@@ -127,7 +125,9 @@ export function HamburgerMenu({ isOpen, onClose }: Props) {
         )}
       </AnimatePresence>
 
-      {showVideo && <VideoModal onClose={() => setShowVideo(false)} />}
+      <AnimatePresence>
+        {showVideo && <VideoModal key="video-modal" onClose={() => setShowVideo(false)} />}
+      </AnimatePresence>
     </>
   );
 }

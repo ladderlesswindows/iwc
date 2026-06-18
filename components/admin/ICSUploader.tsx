@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Upload } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { adminHeader } from "@/lib/admin";
 
 interface ICSEvent {
   start: string;
@@ -45,9 +45,10 @@ function parseICS(text: string): ICSEvent[] {
 
 interface Props {
   onRefresh: () => void;
+  adminPw: string;
 }
 
-export function ICSUploader({ onRefresh }: Props) {
+export function ICSUploader({ onRefresh, adminPw }: Props) {
   const [status, setStatus] = useState<"idle" | "parsing" | "uploading" | "done" | "error">("idle");
   const [count, setCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
@@ -69,24 +70,20 @@ export function ICSUploader({ onRefresh }: Props) {
 
     setStatus("uploading");
 
-    // Map ICS events to blocked availability rows
-    const rows = events.map((ev) => ({
-      date: ev.start.split("T")[0],
-      time_slot: ev.start.includes("T") ? ev.start.split("T")[1].slice(0, 5) : null,
-      is_blocked: true,
-      reason: ev.summary || "ICS import",
-    }));
+    const res = await fetch("/api/admin/ics", {
+      method: "POST",
+      headers: adminHeader(adminPw),
+      body: JSON.stringify({ ics: text }),
+    });
+    const json = await res.json();
 
-    const { error } = await supabase.from("availability").upsert(rows, { onConflict: "date,time_slot" });
-
-    if (error) {
-      console.error(error);
+    if (!res.ok) {
       setStatus("error");
-      setErrorMsg(error.message);
+      setErrorMsg(json.error ?? "Upload failed");
       return;
     }
 
-    setCount(rows.length);
+    setCount(json.count ?? 0);
     setStatus("done");
     onRefresh();
   }

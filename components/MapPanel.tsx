@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type mapboxgl from "mapbox-gl";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   SERVICE_AREAS, INITIAL_CAMERA, ZOOMED_CAMERA, DEFAULT_ZIP,
@@ -9,6 +10,8 @@ import {
 import type { CoverageAlert } from "@/lib/serviceAreas";
 import type { Step } from "@/components/npc/types";
 import { STEP_ORDER } from "@/components/npc/types";
+import { formatTime, formatDateFull, FALLBACK_DATE } from "@/lib/availability";
+import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
 
 interface Props {
   step: Step;
@@ -17,16 +20,19 @@ interface Props {
   time: string;
   windowCount: number;
   needsEstimate: boolean;
+  slotMap: Record<string, string[]>;
   onZipChange?: (zip: string) => void;
   onGo?: () => void;
   address?: string;
   onWindowCountChange?: (n: number) => void;
+  onDateChange?: (d: string) => void;
+  onTimeChange?: (t: string) => void;
 }
 
-export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, onZipChange, onGo, address, onWindowCountChange }: Props) {
+export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, address, onWindowCountChange, onDateChange, onTimeChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapLoaded, setMapLoaded]         = useState(false);
   const [hasFlown, setHasFlown]           = useState(false);
   const [overlaysVisible, setOverlaysVisible] = useState(false);
@@ -84,7 +90,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
     import("mapbox-gl").then(({ default: mapboxgl }) => {
       if (cancelled || !containerRef.current) return;
 
-      (mapboxgl as any).accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
       const map = new mapboxgl.Map({
         container: containerRef.current!,
@@ -295,7 +301,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
       {/* Dynamic overlay */}
       <AnimatePresence mode="wait">
         {overlay === "calendar" && (
-          <CalendarOverlay key="cal" date={date} time={time} />
+          <CalendarOverlay key="cal" date={date} time={time} slotMap={slotMap} onDateChange={onDateChange} onTimeChange={onTimeChange} />
         )}
         {overlay === "photos" && (
           <PhotosOverlay key="photos" windowCount={windowCount} />
@@ -315,21 +321,97 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
 
 // ── Calendar Overlay ──────────────────────────────────────────────────
 
-function CalendarOverlay({ date, time }: { date: string; time: string }) {
-  const d = date ? new Date(date + "T12:00:00") : new Date("2026-07-04T12:00:00");
-  const year = d.getFullYear();
-  const month = d.getMonth();
-  const day = d.getDate();
-  const monthName = d.toLocaleString("en-US", { month: "long" });
+function calAddDays(iso: string, n: number): string {
+  const d = new Date(iso + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split("T")[0];
+}
 
-  const totalDays = new Date(year, month + 1, 0).getDate();
-  const startDay = new Date(year, month, 1).getDay();
+function getMonday(iso: string): string {
+  const d = new Date(iso + "T12:00:00");
+  const dow = d.getDay();
+  d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+  return d.toISOString().split("T")[0];
+}
 
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < startDay; i++) cells.push(null);
-  for (let n = 1; n <= totalDays; n++) cells.push(n);
+function CalendarOverlay({
+  date, time, slotMap, onDateChange, onTimeChange,
+}: {
+  date: string; time: string;
+  slotMap: Record<string, string[]>;
+  onDateChange?: (d: string) => void;
+  onTimeChange?: (t: string) => void;
+}) {
+  const today = new Date().toISOString().split("T")[0];
+  const baseDate = date || today;
 
-  const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const [view, setView]           = useState<"week" | "month">("week");
+  const [weekStart, setWeekStart] = useState(() => getMonday(baseDate));
+  const [monthKey, setMonthKey]   = useState(() => baseDate.slice(0, 7));
+  const didAutoSelect             = useRef(false);
+
+  useEffect(() => {
+    if (date) {
+      setWeekStart(getMonday(date));
+      setMonthKey(date.slice(0, 7));
+    }
+  }, [date]);
+
+  // Auto-select the real nearest available slot on first slotMap load
+  useEffect(() => {
+    if (didAutoSelect.current) return;
+    const keys = Object.keys(slotMap);
+    if (!keys.length) return;
+    if (date && date !== FALLBACK_DATE) return; // user already chose
+    const firstAvail = keys.sort().find(d => d >= today && (slotMap[d] ?? []).length > 0);
+    if (firstAvail) {
+      didAutoSelect.current = true;
+      onDateChange?.(firstAvail);
+      const firstSlot = slotMap[firstAvail]?.[0];
+      if (firstSlot) onTimeChange?.(firstSlot);
+    }
+  }, [slotMap]);
+
+  function selectDay(d: string) {
+    onDateChange?.(d);
+    const slots = slotMap[d] ?? [];
+    if (slots.length > 0 && !slots.includes(time)) onTimeChange?.(slots[0]);
+  }
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => calAddDays(weekStart, i));
+
+  const [mYear, mMonthNum] = monthKey.split("-").map(Number);
+  const firstDow  = new Date(mYear, mMonthNum - 1, 1).getDay();
+  const totalDays = new Date(mYear, mMonthNum, 0).getDate();
+  const monthName = new Date(mYear, mMonthNum - 1, 1).toLocaleString("en-US", { month: "long" });
+
+  function prevPeriod() {
+    if (view === "week") { setWeekStart(calAddDays(weekStart, -7)); return; }
+    const p = new Date(mYear, mMonthNum - 2, 1);
+    setMonthKey(`${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}`);
+  }
+  function nextPeriod() {
+    if (view === "week") { setWeekStart(calAddDays(weekStart, 7)); return; }
+    const n = new Date(mYear, mMonthNum, 1);
+    setMonthKey(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  const weekLabel = (() => {
+    const d0 = new Date(weekStart + "T12:00:00");
+    const d6 = new Date(calAddDays(weekStart, 6) + "T12:00:00");
+    const fmt = (d: Date) => d.toLocaleString("en-US", { month: "short", day: "numeric" });
+    return `${fmt(d0)} – ${fmt(d6)}`;
+  })();
+
+  const TEAL = "rgba(126,200,227,";
+  const navBtn: React.CSSProperties = {
+    background: "transparent", border: `1px solid ${TEAL}0.14)`,
+    borderRadius: 6, color: `${TEAL}0.5)`, fontSize: 14, lineHeight: 1,
+    padding: "2px 10px", cursor: "pointer", fontFamily: "inherit",
+    transition: "all 0.12s",
+  };
+
+  const timeSlots = date ? (slotMap[date] ?? []) : [];
 
   return (
     <motion.div
@@ -344,66 +426,129 @@ function CalendarOverlay({ date, time }: { date: string; time: string }) {
       }}
     >
       <div style={{
-        background: "rgba(5,5,8,0.84)",
+        background: "rgba(5,5,8,0.88)",
         backdropFilter: "blur(22px)",
         WebkitBackdropFilter: "blur(22px)",
-        border: "1px solid rgba(126,200,227,0.14)",
-        borderRadius: 18, padding: "22px 24px 18px",
+        border: `1px solid ${TEAL}0.14)`,
+        borderRadius: 18, padding: "16px 18px 14px",
         boxShadow: "0 10px 48px rgba(0,0,0,0.6)",
-        width: 258,
+        width: 292, pointerEvents: "auto",
       }}>
-        {/* Month + year header */}
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "rgba(126,200,227,0.45)", marginBottom: 2 }}>
-            {year}
+
+        {/* ── Header: nav + title + view toggle ── */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <button style={navBtn} onClick={prevPeriod}>‹</button>
+          <div style={{ textAlign: "center" as const }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.78)" }}>
+              {view === "week" ? weekLabel : `${monthName} ${mYear}`}
+            </div>
           </div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>
-            {monthName}
-          </div>
+          <button style={navBtn} onClick={nextPeriod}>›</button>
         </div>
 
-        {/* Day-of-week headers */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
-          {DAY_LABELS.map((label) => (
-            <div key={label} style={{ textAlign: "center", fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.04em" }}>
-              {label}
-            </div>
+        {/* View toggle */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 4, marginBottom: 12 }}>
+          {(["week", "month"] as const).map(v => (
+            <button key={v} onClick={() => setView(v)}
+              style={{
+                fontSize: 8.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const,
+                padding: "3px 10px", borderRadius: 5, cursor: "pointer", fontFamily: "inherit",
+                background: view === v ? `${TEAL}0.16)` : "transparent",
+                color: view === v ? `${TEAL}0.9)` : "rgba(255,255,255,0.28)",
+                border: `1px solid ${view === v ? `${TEAL}0.32)` : "rgba(255,255,255,0.06)"}`,
+                transition: "all 0.12s",
+              }}
+            >{v}</button>
           ))}
         </div>
 
-        {/* Day cells */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
-          {cells.map((n, i) => {
-            const selected = n === day;
-            return (
-              <div
-                key={i}
-                style={{
-                  aspectRatio: "1",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: 6,
-                  fontSize: 10.5, fontWeight: selected ? 700 : 400,
-                  color: n === null ? "transparent"
-                    : selected ? "#050508"
-                    : "rgba(255,255,255,0.45)",
-                  background: selected ? "rgba(126,200,227,0.88)" : "transparent",
-                  boxShadow: selected ? "0 0 14px rgba(126,200,227,0.4)" : "none",
-                }}
-              >
-                {n ?? ""}
-              </div>
-            );
-          })}
-        </div>
+        {/* ── Week view ── */}
+        {view === "week" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+            {weekDays.map(d => {
+              const slots   = slotMap[d] ?? [];
+              const hasSlots = slots.length > 0 && d >= today;
+              const selected = d === date;
+              const dayObj   = new Date(d + "T12:00:00");
+              const dow      = ["Su","Mo","Tu","We","Th","Fr","Sa"][dayObj.getDay()];
+              const dayNum   = dayObj.getDate();
+              const past     = d < today;
+              return (
+                <button key={d}
+                  onClick={() => { if (hasSlots) selectDay(d); }}
+                  style={{
+                    display: "flex", flexDirection: "column" as const,
+                    alignItems: "center", padding: "8px 2px", borderRadius: 9, gap: 3,
+                    background: selected ? `${TEAL}0.88)` : hasSlots ? `${TEAL}0.07)` : "transparent",
+                    border: `1px solid ${selected ? `${TEAL}0.6)` : hasSlots ? `${TEAL}0.15)` : "transparent"}`,
+                    cursor: hasSlots ? "pointer" : "default",
+                    opacity: past || (!hasSlots && !past) ? 0.2 : 1,
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <span style={{ fontSize: 7.5, fontWeight: 700, color: selected ? "#050508" : "rgba(255,255,255,0.4)", letterSpacing: "0.04em" }}>{dow}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: selected ? "#050508" : "rgba(255,255,255,0.85)", lineHeight: 1 }}>{dayNum}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Selected time */}
-        {time && (
-          <div style={{
-            marginTop: 16, textAlign: "center",
-            fontSize: 14, fontWeight: 700,
-            color: "rgba(126,200,227,0.78)", letterSpacing: "0.06em",
-          }}>
-            ⊙ {fmt12(time)}
+        {/* ── Month view ── */}
+        {view === "month" && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2, marginBottom: 4 }}>
+              {["Su","Mo","Tu","We","Th","Fr","Sa"].map(l => (
+                <div key={l} style={{ textAlign: "center" as const, fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.2)" }}>{l}</div>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 2 }}>
+              {Array.from({ length: firstDow }, (_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: totalDays }, (_, i) => {
+                const dayNum  = i + 1;
+                const iso     = `${mYear}-${String(mMonthNum).padStart(2,"0")}-${String(dayNum).padStart(2,"0")}`;
+                const slots   = slotMap[iso] ?? [];
+                const hasSlots = slots.length > 0 && iso >= today;
+                const selected = iso === date;
+                const past    = iso < today;
+                return (
+                  <div key={dayNum}
+                    onClick={() => { if (hasSlots) selectDay(iso); }}
+                    style={{
+                      aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center",
+                      borderRadius: 6, fontSize: 10, fontWeight: selected ? 700 : 400,
+                      color: past ? "rgba(255,255,255,0.1)" : selected ? "#050508" : hasSlots ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.2)",
+                      background: selected ? `${TEAL}0.88)` : hasSlots ? `${TEAL}0.07)` : "transparent",
+                      cursor: hasSlots ? "pointer" : "default",
+                    }}
+                  >{dayNum}</div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* ── Time slot pills ── */}
+        {timeSlots.length > 0 && (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${TEAL}0.1)`, display: "flex", flexWrap: "wrap" as const, gap: 5 }}>
+            {timeSlots.map(t => (
+              <button key={t} onClick={() => onTimeChange?.(t)}
+                style={{
+                  padding: "4px 10px", borderRadius: 6,
+                  background: t === time ? `${TEAL}0.88)` : `${TEAL}0.08)`,
+                  border: `1px solid ${t === time ? `${TEAL}0.6)` : `${TEAL}0.16)`}`,
+                  color: t === time ? "#050508" : `${TEAL}0.82)`,
+                  fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                }}
+              >{formatTime(t)}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Fallback: just show the selected time if no slot list yet */}
+        {timeSlots.length === 0 && time && (
+          <div style={{ marginTop: 12, textAlign: "center" as const, fontSize: 13, fontWeight: 700, color: `${TEAL}0.78)`, letterSpacing: "0.06em" }}>
+            ⊙ {formatTime(time)}
           </div>
         )}
       </div>
@@ -463,7 +608,7 @@ function PhotosOverlay({ windowCount }: { windowCount: number }) {
       </div>
 
       <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(126,200,227,0.85)", marginTop: 4 }}>
-        {windowCount} window{windowCount !== 1 ? "s" : ""} · ${windowCount * 22}
+        {windowCount} window{windowCount !== 1 ? "s" : ""} · ${windowCount * PRICE_PER_WINDOW}
       </div>
     </motion.div>
   );
@@ -478,9 +623,9 @@ function SummaryOverlay({ date, time, windowCount, needsEstimate, zip, step }: {
   const area = SERVICE_AREAS[zip];
   const rows = [
     { label: "Location", value: area ? `${area.name}, CA ${zip}` : zip },
-    { label: "Date",     value: date ? fmtDate(date) : "July 4, 2026" },
-    { label: "Time",     value: time ? fmt12(time)   : "2:50 PM" },
-    { label: "Windows",  value: `${windowCount} — $${windowCount * 22}` },
+    { label: "Date",     value: date ? formatDateFull(date) : "July 4, 2026" },
+    { label: "Time",     value: time ? formatTime(time)    : "2:50 PM" },
+    { label: "Windows",  value: `${windowCount} — $${windowCount * PRICE_PER_WINDOW}` },
     ...(step === "complete"
       ? [{ label: "Service", value: needsEstimate ? "Full estimate" : "Windows only" }]
       : []),
@@ -714,7 +859,7 @@ function MapWindowCounter({ count, minWindows, onChange }: {
   count: number; minWindows: number; onChange: (n: number) => void;
 }) {
   const atMin = count <= minWindows;
-  const atMax = count >= 20;
+  const atMax = count >= MAX_WINDOWS;
   const btnBase: React.CSSProperties = {
     width: 30, height: 30, borderRadius: "50%",
     background: "rgba(126,200,227,0.1)",
@@ -748,11 +893,11 @@ function MapWindowCounter({ count, minWindows, onChange }: {
           <div style={{ textAlign: "center" as const, minWidth: 28 }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: "rgba(255,255,255,0.92)", lineHeight: 1 }}>{count}</div>
           </div>
-          <button onClick={() => onChange(Math.min(20, count + 1))}
+          <button onClick={() => onChange(Math.min(MAX_WINDOWS, count + 1))}
             style={{ ...btnBase, cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.3 : 1 }}>+</button>
         </div>
         <div style={{ fontSize: 10, color: "rgba(255,255,255,0.32)", marginTop: 8 }}>
-          ${count * 22} total
+          ${count * PRICE_PER_WINDOW} total
         </div>
         {atMin && minWindows > 1 && (
           <div style={{ fontSize: 8.5, color: "rgba(126,200,227,0.4)", marginTop: 4, letterSpacing: "0.03em" }}>
@@ -764,16 +909,3 @@ function MapWindowCounter({ count, minWindows, onChange }: {
   );
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────
-
-function fmt12(t: string): string {
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso + "T12:00:00").toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
-}

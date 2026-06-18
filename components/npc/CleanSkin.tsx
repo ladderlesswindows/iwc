@@ -3,44 +3,16 @@
 import { useState } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
+import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
+import { DARK, LIGHT, type Tokens } from "./theme";
 import type { SkinProps, Step } from "./types";
 
-// ── Theme token sets ──────────────────────────────────────────────────
-const DARK = {
-  ACCENT:        "#a78bfa",
-  ACCENT_DIM:    "rgba(167,139,250,0.15)",
-  ACCENT_BORDER: "rgba(167,139,250,0.3)",
-  CARD_BG:       "rgba(255,255,255,0.04)",
-  CARD_BORDER:   "rgba(255,255,255,0.08)",
-  TEXT:          "#ffffff",
-  TEXT_DIM:      "rgba(255,255,255,0.45)",
-  TEXT_FAINT:    "rgba(255,255,255,0.2)",
-  GREEN:         "#4ade80",
-  PANEL_BG:      "#080810",
-  INPUT_BG:      "rgba(255,255,255,0.05)",
-  INPUT_BORDER:  "rgba(255,255,255,0.1)",
-  INPUT_TEXT:    "white",
-  SLOT_BG:       "rgba(0,0,0,0.2)",
+// ── Module-level step order and labels ───────────────────────────────
+const STEPS: Step[] = ["location", "timeslot", "windows", "contact", "complete"];
+const STEP_LABELS: Record<Step, string> = {
+  location: "Service area", timeslot: "Date & time", windows: "Window count",
+  estimate: "Estimate", contact: "Service address", complete: "Complete",
 };
-
-const LIGHT = {
-  ACCENT:        "#6d28d9",
-  ACCENT_DIM:    "rgba(109,40,217,0.1)",
-  ACCENT_BORDER: "rgba(109,40,217,0.22)",
-  CARD_BG:       "rgba(0,0,0,0.028)",
-  CARD_BORDER:   "rgba(0,0,0,0.1)",
-  TEXT:          "#111827",
-  TEXT_DIM:      "rgba(17,24,39,0.5)",
-  TEXT_FAINT:    "rgba(17,24,39,0.28)",
-  GREEN:         "#16a34a",
-  PANEL_BG:      "#f4f4fa",
-  INPUT_BG:      "rgba(0,0,0,0.04)",
-  INPUT_BORDER:  "rgba(0,0,0,0.12)",
-  INPUT_TEXT:    "#111827",
-  SLOT_BG:       "rgba(0,0,0,0.04)",
-};
-
-type Tokens = typeof DARK;
 
 // ── Module-level sub-components (stable refs — no focus-loss on re-render) ──
 
@@ -102,12 +74,12 @@ function CardLabel({ T, text }: { T: Tokens; text: string }) {
 function Counter({ T, count, onChange }: { T: Tokens; count: number; onChange: (n: number) => void }) {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:14, margin:"12px 0" }}>
-      <button onClick={() => onChange(Math.max(1, count - 1))}
-        style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count<=1?"not-allowed":"pointer", opacity:count<=1?0.4:1 }}>−</button>
+      <button onClick={() => onChange(Math.max(MIN_WINDOWS, count - 1))}
+        style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count<=MIN_WINDOWS?"not-allowed":"pointer", opacity:count<=MIN_WINDOWS?0.4:1 }}>−</button>
       <span style={{ fontSize:20, fontWeight:800, color:T.TEXT, minWidth:24, textAlign:"center" as const }}>{count}</span>
-      <button onClick={() => onChange(Math.min(20, count + 1))}
-        style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count>=20?"not-allowed":"pointer", opacity:count>=20?0.4:1 }}>+</button>
-      <span style={{ fontSize:12, color:T.TEXT_DIM, marginLeft:4 }}>${count*22} total</span>
+      <button onClick={() => onChange(Math.min(MAX_WINDOWS, count + 1))}
+        style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count>=MAX_WINDOWS?"not-allowed":"pointer", opacity:count>=MAX_WINDOWS?0.4:1 }}>+</button>
+      <span style={{ fontSize:12, color:T.TEXT_DIM, marginLeft:4 }}>${count*PRICE_PER_WINDOW} total</span>
     </div>
   );
 }
@@ -157,13 +129,7 @@ export function CleanSkin(props: SkinProps) {
     onAddressChange?.(full);
   }
 
-  const STEPS: Step[] = ["location", "timeslot", "windows", "contact", "complete"];
   const currentIdx = STEPS.indexOf(step);
-
-  const STEP_LABELS: Record<Step, string> = {
-    location: "Service area", timeslot: "Date & time", windows: "Window count",
-    estimate: "Estimate", contact: "Service address", complete: "Complete",
-  };
 
   function renderCurrentQuestion() {
     switch (step) {
@@ -229,7 +195,7 @@ export function CleanSkin(props: SkinProps) {
             <GhostBtn T={T} label={showSlots ? "Hide times ↑" : "See other slots ↓"} onClick={() => setShowSlots(v => !v)} />
           </div>
           {showSlots && (
-            <div style={{ maxHeight:140, overflowY:"auto", marginTop:10, border:`1px solid ${T.CARD_BORDER}`, borderRadius:10, padding:"8px 10px", background:T.SLOT_BG }}>
+            <div style={{ maxHeight:140, overflowY:"auto", marginTop:10, border:`1px solid ${T.CARD_BORDER}`, borderRadius:10, padding:"8px 10px", background:T.TRAY_BG }}>
               {getNextDays().map(d => {
                 const slots = slotMap[d] ?? [];
                 if (!slots.length) return null;
@@ -256,9 +222,9 @@ export function CleanSkin(props: SkinProps) {
       case "windows": return (
         <ActiveCard T={T}>
           <CardLabel T={T} text="Windows" />
-          <p style={{ fontSize:13, color:T.TEXT_DIM, marginBottom:0 }}>How many windows today? <span style={{ color:T.ACCENT }}>$22 each</span></p>
+          <p style={{ fontSize:13, color:T.TEXT_DIM, marginBottom:0 }}>How many windows today? <span style={{ color:T.ACCENT }}>${PRICE_PER_WINDOW} each</span></p>
           <Counter T={T} count={windowCount} onChange={onWindowCountChange} />
-          <AccentBtn T={T} label={`✓ Confirm ${windowCount} window${windowCount!==1?"s":""} — $${windowCount*22}`} onClick={() => advance("contact")} />
+          <AccentBtn T={T} label={`✓ Confirm ${windowCount} window${windowCount!==1?"s":""} — $${windowCount*PRICE_PER_WINDOW}`} onClick={() => advance("contact")} />
           <div style={{ display:"flex", marginTop:8 }}>
             <GhostBtn T={T} label="← Back" onClick={() => advance("timeslot")} />
           </div>

@@ -1,9 +1,9 @@
 import { supabase } from "./supabase";
 
 export const FALLBACK_DATE = "2026-07-04";
-export const FALLBACK_TIME = "14:50";
+export const FALLBACK_TIME = "14:00";
 
-export const SLOT_TIMES = ["08:00", "10:00", "12:00", "14:00", "14:50", "16:00"];
+export const SLOT_TIMES = ["08:00", "10:00", "12:00", "14:00", "16:00"];
 
 export function formatTime(time: string): string {
   const [h, m] = time.split(":").map(Number);
@@ -40,31 +40,42 @@ export async function fetchAvailability(dates: string[]) {
   try {
     const { data, error } = await supabase
       .from("availability")
-      .select("slot_date, slot_time, is_available, is_blocked")
-      .in("slot_date", dates);
+      .select("date, time_slot, is_blocked")
+      .in("date", dates);
 
     if (error) throw error;
     return data ?? [];
-  } catch {
+  } catch (err) {
+    console.error("fetchAvailability failed:", err);
     return [];
   }
 }
 
 export function buildSlotMap(
   dates: string[],
-  dbRows: { slot_date: string; slot_time: string; is_available: boolean; is_blocked: boolean }[]
+  dbRows: { date: string; time_slot: string | null; is_blocked: boolean }[]
 ) {
   const map: Record<string, string[]> = {};
 
   for (const date of dates) {
     const blocked = new Set(
       dbRows
-        .filter((r) => r.slot_date === date && (r.is_blocked || !r.is_available))
-        .map((r) => r.slot_time.slice(0, 5))
+        .filter((r) => r.date === date && r.is_blocked)
+        .map((r) => (r.time_slot ?? "").slice(0, 5))
     );
     map[date] = SLOT_TIMES.filter((t) => !blocked.has(t));
   }
   return map;
+}
+
+export function formatDateFull(dateStr: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+export function formatPhone(p: string): string {
+  const d = p.replace(/\D/g, "");
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return p;
 }
 
 export async function getAvailableSlots() {

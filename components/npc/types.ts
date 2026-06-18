@@ -56,6 +56,14 @@ export interface SkinProps {
   address?: string;
   onAddressChange?: (v: string) => void;
 
+  // Optional contact fields (GameSkin contact step; PowerConsoleSkin uses its own interface)
+  firstName?: string;
+  phone?: string;
+  email?: string;
+  onFirstNameChange?: (v: string) => void;
+  onPhoneChange?: (v: string) => void;
+  onEmailChange?: (v: string) => void;
+
   // Theme — light/dark
   mode: ThemeMode;
 

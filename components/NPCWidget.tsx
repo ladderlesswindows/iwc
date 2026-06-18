@@ -12,7 +12,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { getAvailableSlots, formatDate, formatTime, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { formatDate, formatTime, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
+import { PRICE_PER_WINDOW } from "@/lib/constants";
 import { GameSkin } from "./npc/GameSkin";
 import { CleanSkin } from "./npc/CleanSkin";
 import { PowerConsoleSkin } from "./npc/PowerConsoleSkin";
@@ -45,6 +46,7 @@ interface Props {
   onNotesChange: (v: string) => void;
 
   selectedZip?: string;
+  slotMap: Record<string, string[]>;
   paused: boolean;
   onResume: () => void;
   onGoToSummary: () => void;
@@ -61,18 +63,15 @@ export function NPCWidget(props: Props) {
     address, firstName, lastName, phone, email, notes,
     onAddressChange, onFirstNameChange, onLastNameChange,
     onPhoneChange, onEmailChange, onNotesChange,
-    selectedZip, paused, onResume, onGoToSummary, onStepChange, onZipChange,
+    selectedZip, slotMap, paused, onResume, onGoToSummary, onStepChange, onZipChange,
   } = props;
 
   // ── Panel state ───────────────────────────────────────────────────
-  const [skin, setSkin]   = useState<Skin>(() =>
+  const [skin, setSkin] = useState<Skin>(() =>
     typeof window !== "undefined" && window.innerWidth < 768 ? "game" : "clean"
   );
-  const [mode, setMode]   = useState<ThemeMode>("dark");
-  const [step, setStep]   = useState<Step>("location");
-  const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
-
-  useEffect(() => { getAvailableSlots().then(setSlotMap); }, []);
+  const [mode, setMode] = useState<ThemeMode>("dark");
+  const [step, setStep] = useState<Step>("location");
 
   useEffect(() => {
     if (props.goTrigger && step === "location") goToStep("timeslot");
@@ -90,7 +89,7 @@ export function NPCWidget(props: Props) {
   const questItems: QuestItem[] = [
     { step:"location", label:"Location",   confirmed:isConfirmed("location"), value:"Santa Cruz, CA 95060" },
     { step:"timeslot", label:"Date & Time", confirmed:isConfirmed("timeslot"), value: date ? `${formatDate(date)} · ${formatTime(time)}` : `${formatDate(FALLBACK_DATE)} · ${formatTime(FALLBACK_TIME)}` },
-    { step:"windows",  label:"Windows",    confirmed:isConfirmed("windows"),  value:`${windowCount}× · $${windowCount * 22}` },
+    { step:"windows",  label:"Windows",    confirmed:isConfirmed("windows"),  value:`${windowCount}× · $${windowCount * PRICE_PER_WINDOW}` },
     { step:"contact",  label:"Address",    confirmed:isConfirmed("contact"),  value:"On file" },
   ];
 
@@ -101,6 +100,8 @@ export function NPCWidget(props: Props) {
     onNeedsEstimateChange, onEstimateDeadlineChange,
     paused, onResume, onGoToSummary, onZipChange,
     address, onAddressChange,
+    firstName, phone, email,
+    onFirstNameChange, onPhoneChange, onEmailChange,
     mode,
     onSkinChange: setSkin,
   };

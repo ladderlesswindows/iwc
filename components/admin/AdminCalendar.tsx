@@ -1,56 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 
-// FullCalendar must not SSR
 const FullCalendar = dynamic(() => import("@fullcalendar/react").then((m) => m.default), { ssr: false });
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { supabase } from "@/lib/supabase";
+import { adminHeader } from "@/lib/admin";
+import type { Booking, BlockedSlot } from "@/app/admin/types";
 import type { DateClickArg } from "@fullcalendar/interaction";
-import type { EventClickArg } from "@fullcalendar/core";
-
-interface Booking {
-  id: string;
-  service_date: string;
-  service_time: string;
-  address: string;
-  first_name: string | null;
-  last_name: string | null;
-  window_count: number;
-  total_price: number;
-  status: string;
-}
-
-interface BlockedSlot {
-  id: string;
-  date: string;
-  time_slot: string | null;
-  reason: string | null;
-}
+import type { EventClickArg, EventDropArg } from "@fullcalendar/core";
 
 interface Props {
   bookings: Booking[];
   blocked: BlockedSlot[];
   onRefresh: () => void;
+  role?: "owner" | "staff";
+  adminPw: string;
 }
 
-export function AdminCalendar({ bookings, blocked, onRefresh }: Props) {
+export function AdminCalendar({ bookings, blocked, onRefresh, role = "owner", adminPw }: Props) {
+  const isOwner = role === "owner";
+
   function toEvents() {
     const bookingEvents = bookings.map((b) => ({
       id: `booking-${b.id}`,
-      title: `${b.window_count}w — ${b.address.split(",")[0]}`,
+      title: isOwner
+        ? `${b.window_count}w — ${b.address.split(",")[0]}`
+        : "Busy",
       start: `${b.service_date}T${b.service_time}`,
-      backgroundColor: "#7c3aed",
-      borderColor: "#6d28d9",
+      backgroundColor: isOwner ? "#7c3aed" : "#374151",
+      borderColor:     isOwner ? "#6d28d9" : "#4b5563",
       textColor: "#fff",
     }));
 
     const blockedEvents = blocked.map((bl) => ({
       id: `blocked-${bl.id}`,
-      title: bl.reason ?? "Blocked",
+      title: isOwner ? (bl.reason ?? "Blocked") : "Busy",
       start: bl.time_slot ? `${bl.date}T${bl.time_slot}` : bl.date,
       allDay: !bl.time_slot,
       backgroundColor: "#374151",
@@ -62,28 +48,51 @@ export function AdminCalendar({ bookings, blocked, onRefresh }: Props) {
   }
 
   async function handleDateClick(arg: DateClickArg) {
+    if (!isOwner) return;
     const dateStr = arg.dateStr.split("T")[0];
-    const confirm = window.confirm(`Block ${dateStr}?`);
-    if (!confirm) return;
-
-    await supabase.from("availability").insert({
-      date: dateStr,
-      time_slot: null,
-      is_blocked: true,
-      reason: "Manually blocked",
+    if (!window.confirm(`Block all of ${dateStr}?`)) return;
+    await fetch("/api/admin/block", {
+      method: "POST",
+      headers: adminHeader(adminPw),
+      body: JSON.stringify({ date: dateStr, time_slot: null, reason: "Manually blocked" }),
     });
     onRefresh();
+  }
+
+  async function handleEventDrop(arg: EventDropArg) {
+    if (!isOwner) { arg.revert(); return; }
+    const id = arg.event.id;
+    if (!id.startsWith("booking-")) { arg.revert(); return; }
+    const bookingId = id.replace("booking-", "");
+    const newStart  = arg.event.start;
+    if (!newStart) { arg.revert(); return; }
+
+    const newDate = newStart.toISOString().split("T")[0];
+    const newTime = newStart.toTimeString().slice(0, 5);
+
+    const res = await fetch("/api/admin/bookings", {
+      method: "PATCH",
+      headers: adminHeader(adminPw),
+      body: JSON.stringify({ id: bookingId, service_date: newDate, service_time: newTime }),
+    });
+
+    if (!res.ok) { arg.revert(); alert("Couldn't save — try again."); }
+    else onRefresh();
   }
 
   async function handleEventClick(arg: EventClickArg) {
     const id = arg.event.id;
     if (id.startsWith("blocked-")) {
-      const confirm = window.confirm("Remove this block?");
-      if (!confirm) return;
+      if (!isOwner) return;
+      if (!window.confirm("Remove this block?")) return;
       const realId = id.replace("blocked-", "");
-      await supabase.from("availability").delete().eq("id", realId);
+      await fetch("/api/admin/block", {
+        method: "DELETE",
+        headers: adminHeader(adminPw),
+        body: JSON.stringify({ id: realId }),
+      });
       onRefresh();
-    } else {
+    } else if (isOwner) {
       const booking = bookings.find((b) => `booking-${b.id}` === id);
       if (booking) {
         alert(
@@ -118,8 +127,10 @@ export function AdminCalendar({ bookings, blocked, onRefresh }: Props) {
         initialView="dayGridMonth"
         headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek" }}
         events={toEvents()}
+        editable={isOwner}
         dateClick={handleDateClick}
         eventClick={handleEventClick}
+        eventDrop={handleEventDrop}
         height={540}
       />
     </div>

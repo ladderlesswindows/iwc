@@ -3,43 +3,9 @@
 import { useState } from "react";
 import { formatDate, formatTime, getNextDays } from "@/lib/availability";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
+import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
+import { DARK, LIGHT, type Tokens } from "./theme";
 import type { ThemeMode, Skin } from "./types";
-
-const DARK = {
-  ACCENT:        "#a78bfa",
-  ACCENT_DIM:    "rgba(167,139,250,0.15)",
-  ACCENT_BORDER: "rgba(167,139,250,0.3)",
-  CARD_BG:       "rgba(255,255,255,0.04)",
-  CARD_BORDER:   "rgba(255,255,255,0.08)",
-  TEXT:          "#ffffff",
-  TEXT_DIM:      "rgba(255,255,255,0.45)",
-  TEXT_FAINT:    "rgba(255,255,255,0.2)",
-  GREEN:         "#4ade80",
-  PANEL_BG:      "#080810",
-  INPUT_BG:      "rgba(255,255,255,0.05)",
-  INPUT_BORDER:  "rgba(255,255,255,0.1)",
-  INPUT_TEXT:    "white",
-  ROW_BG:        "rgba(0,0,0,0.25)",
-};
-
-const LIGHT = {
-  ACCENT:        "#6d28d9",
-  ACCENT_DIM:    "rgba(109,40,217,0.1)",
-  ACCENT_BORDER: "rgba(109,40,217,0.22)",
-  CARD_BG:       "rgba(0,0,0,0.028)",
-  CARD_BORDER:   "rgba(0,0,0,0.1)",
-  TEXT:          "#111827",
-  TEXT_DIM:      "rgba(17,24,39,0.5)",
-  TEXT_FAINT:    "rgba(17,24,39,0.28)",
-  GREEN:         "#16a34a",
-  PANEL_BG:      "#f4f4fa",
-  INPUT_BG:      "rgba(0,0,0,0.04)",
-  INPUT_BORDER:  "rgba(0,0,0,0.12)",
-  INPUT_TEXT:    "#111827",
-  ROW_BG:        "rgba(0,0,0,0.04)",
-};
-
-type Tokens = typeof DARK;
 
 export interface PowerConsoleSkinProps {
   date: string; time: string; windowCount: number;
@@ -76,7 +42,7 @@ export function PowerConsoleSkin({
   const zip        = selectedZip ?? DEFAULT_ZIP;
   const area       = SERVICE_AREAS[zip];
   const minWindows = area?.minWindows ?? 1;
-  const total      = windowCount * 22;
+  const total      = windowCount * PRICE_PER_WINDOW;
 
   const [showSlots, setShowSlots] = useState(false);
   const [street, setStreet]       = useState("");
@@ -152,8 +118,8 @@ export function PowerConsoleSkin({
             <button onClick={() => onWindowCountChange(Math.max(minWindows, windowCount - 1))}
               style={{ width: 26, height: 26, borderRadius: "50%", background: T.ACCENT_DIM, border: `1px solid ${T.ACCENT_BORDER}`, color: T.ACCENT, fontSize: 15, fontWeight: 700, cursor: windowCount <= minWindows ? "not-allowed" : "pointer", opacity: windowCount <= minWindows ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
             <span style={{ fontSize: 18, fontWeight: 800, color: T.TEXT, minWidth: 22, textAlign: "center" as const }}>{windowCount}</span>
-            <button onClick={() => onWindowCountChange(Math.min(20, windowCount + 1))}
-              style={{ width: 26, height: 26, borderRadius: "50%", background: T.ACCENT_DIM, border: `1px solid ${T.ACCENT_BORDER}`, color: T.ACCENT, fontSize: 15, fontWeight: 700, cursor: windowCount >= 20 ? "not-allowed" : "pointer", opacity: windowCount >= 20 ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+            <button onClick={() => onWindowCountChange(Math.min(MAX_WINDOWS, windowCount + 1))}
+              style={{ width: 26, height: 26, borderRadius: "50%", background: T.ACCENT_DIM, border: `1px solid ${T.ACCENT_BORDER}`, color: T.ACCENT, fontSize: 15, fontWeight: 700, cursor: windowCount >= MAX_WINDOWS ? "not-allowed" : "pointer", opacity: windowCount >= MAX_WINDOWS ? 0.4 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
             <span style={{ fontSize: 10, color: T.TEXT_DIM }}>windows</span>
           </div>
           <span style={{ fontSize: 13, color: T.ACCENT, fontWeight: 700 }}>${total}</span>
@@ -176,7 +142,7 @@ export function PowerConsoleSkin({
           style={{ fontSize: 10, color: T.ACCENT, background: T.ACCENT_DIM, border: `1px solid ${T.ACCENT_BORDER}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit" }}
         >{showSlots ? "Hide slots ↑" : "Change slot ↓"}</button>
         {showSlots && (
-          <div style={{ maxHeight: 150, overflowY: "auto", marginTop: 8, background: T.ROW_BG, borderRadius: 8, padding: "6px 8px" }}>
+          <div style={{ maxHeight: 150, overflowY: "auto", marginTop: 8, background: T.TRAY_BG, borderRadius: 8, padding: "6px 8px" }}>
             {dates.map(d => {
               const slots = slotMap[d] ?? [];
               if (!slots.length) return null;

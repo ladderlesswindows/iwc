@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type mapboxgl from "mapbox-gl";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
@@ -37,7 +38,7 @@ type View = "choice" | "commercial";
 
 export default function CommercialPage() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<any>(null);
+  const mapRef       = useRef<mapboxgl.Map | null>(null);
   const [view, setView]       = useState<View>("choice");
   const [address, setAddress] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -50,7 +51,7 @@ export default function CommercialPage() {
 
     import("mapbox-gl").then(({ default: mapboxgl }) => {
       if (cancelled || !containerRef.current) return;
-      (mapboxgl as any).accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
       const map = new mapboxgl.Map({
         container: containerRef.current!,
@@ -109,7 +110,7 @@ export default function CommercialPage() {
       curve:    AQUARIUM_FLY.curve,
       essential: true,
     });
-    setTimeout(() => router.push("/"), 4200);
+    setTimeout(() => router.push("/"), AQUARIUM_FLY.duration - 1300);
   }
 
   function handleBackToResidential() {

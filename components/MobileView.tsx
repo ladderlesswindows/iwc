@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import type mapboxgl from "mapbox-gl";
 import { PowerConsoleSkin } from "@/components/npc/PowerConsoleSkin";
-import { getAvailableSlots } from "@/lib/availability";
 
 interface Props {
   date: string; time: string; windowCount: number;
   needsEstimate: boolean; estimateDeadline: string;
   address: string; firstName: string; lastName: string;
   phone: string; email: string; notes: string;
+  slotMap: Record<string, string[]>;
   onDateChange: (v: string) => void;
   onTimeChange: (v: string) => void;
   onWindowCountChange: (v: number) => void;
@@ -29,11 +30,8 @@ const PEEK_PX    = 68; // visible height when collapsed
 
 export function MobileView(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<any>(null);
-  const [open, setOpen]       = useState(false);
-  const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
-
-  useEffect(() => { getAvailableSlots().then(setSlotMap); }, []);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const [open, setOpen] = useState(false);
 
   // ── Satellite map intro ────────────────────────────────────────
   useEffect(() => {
@@ -42,7 +40,7 @@ export function MobileView(props: Props) {
 
     import("mapbox-gl").then(({ default: mapboxgl }) => {
       if (cancelled || !containerRef.current) return;
-      (mapboxgl as any).accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
       const map = new mapboxgl.Map({
         container: containerRef.current!,
@@ -179,7 +177,7 @@ export function MobileView(props: Props) {
             windowCount={props.windowCount}
             needsEstimate={props.needsEstimate}
             estimateDeadline={props.estimateDeadline}
-            slotMap={slotMap}
+            slotMap={props.slotMap}
             onDateChange={props.onDateChange}
             onTimeChange={props.onTimeChange}
             onWindowCountChange={props.onWindowCountChange}

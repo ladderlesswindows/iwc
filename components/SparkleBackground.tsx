@@ -33,7 +33,7 @@ export function SparkleBackground() {
   return (
     <div
       className="fixed inset-0 overflow-hidden pointer-events-none"
-      style={{ zIndex: 0, background: "#080810" }}
+      style={{ zIndex: 0, background: "var(--bg)" }}
       aria-hidden
     >
       {/* Orbs */}
