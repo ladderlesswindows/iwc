@@ -100,11 +100,11 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
       const map = new mapboxgl.Map({
         container: containerRef.current!,
         style: "mapbox://styles/mapbox/satellite-v9",
-        // Start at Monterey Bay Aquarium — mirrors the commercial page exit
-        center: [-121.9018, 36.6182],
-        zoom: 17.5,
+        // Start at Davenport coastal bluffs looking SE along the coast toward Santa Cruz
+        center: [-122.1853, 37.0042],
+        zoom: 12.5,
         pitch: 65,
-        bearing: -28,
+        bearing: 335,
         interactive: false,
         attributionControl: false,
       });
@@ -133,14 +133,14 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           markersRef.current.push(marker);
         });
 
-        // Intro fly: Aquarium → Santa Cruz county overview
+        // Intro fly: Davenport coast → Santa Cruz county overview
         map.flyTo({
           center:   INITIAL_CAMERA.center,
           zoom:     INITIAL_CAMERA.zoom,
           pitch:    0,
           bearing:  0,
-          duration: 9000,
-          curve:    1.7,
+          duration: 8500,
+          curve:    1.4,
           essential: true,
         });
 
@@ -154,7 +154,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           map.on("click", () => {
             if (stepIdxRef.current === 0) onOpenRef.current?.();
           });
-        }, 9300);
+        }, 8800);
       });
 
       mapRef.current = map;
@@ -185,6 +185,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
         m.getElement().style.display = "block";
       });
       setHasFlown(false);
+      initializedForZipRef.current = null;
     } else if (!hasFlown) {
       // First time advancing past location — fly to confirmed ZIP
       const area = SERVICE_AREAS[zip];
@@ -255,10 +256,12 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
       <AnimatePresence>
         {stepIdx > 0 && area && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45 }}
+            variants={{
+              hidden:  { opacity: 0, x: -60, scale: 0.85 },
+              visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } },
+              exit:    { opacity: 0, x: -30, transition: { duration: 0.25 } },
+            }}
+            initial="hidden" animate="visible" exit="exit"
             style={{
               position: "absolute", top: 14, left: 16,
               background: "rgba(5,5,8,0.78)",
@@ -424,10 +427,12 @@ function CalendarOverlay({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.93, y: 14 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.93 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
+      variants={{
+        hidden:  { opacity: 0, y: -130, scale: 0.72 },
+        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 1.3, delay: 0.9, ease: [0.34, 1.56, 0.64, 1] } },
+        exit:    { opacity: 0, scale: 0.88, y: 16, transition: { duration: 0.25 } },
+      }}
+      initial="hidden" animate="visible" exit="exit"
       style={{
         position: "absolute", inset: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -684,10 +689,12 @@ function SummaryOverlay({ date, time, windowCount, needsEstimate, zip, step }: {
 function CoverageAlertCard({ alert }: { alert: CoverageAlert }) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: -14 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -14 }}
-      transition={{ duration: 0.45, delay: 1.8, ease: "easeOut" }}
+      variants={{
+        hidden:  { opacity: 0, y: -80, scale: 0.8 },
+        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 1.0, delay: 2.8, ease: [0.16, 1, 0.3, 1] } },
+        exit:    { opacity: 0, y: -40, scale: 0.88, transition: { duration: 0.25 } },
+      }}
+      initial="hidden" animate="visible" exit="exit"
       style={{
         position: "absolute", top: 54, left: 16,
         pointerEvents: "none", maxWidth: 230,
@@ -880,10 +887,12 @@ function MapWindowCounter({ count, minWindows, onChange }: {
   };
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      transition={{ duration: 0.38, ease: "easeOut" }}
+      variants={{
+        hidden:  { opacity: 0, x: -130, scale: 0.88 },
+        visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 1.0, delay: 2.0, ease: [0.16, 1, 0.3, 1] } },
+        exit:    { opacity: 0, x: -80, transition: { duration: 0.25 } },
+      }}
+      initial="hidden" animate="visible" exit="exit"
       style={{ position: "absolute", bottom: "14%", left: "10%", pointerEvents: "auto" }}
     >
       <div style={{

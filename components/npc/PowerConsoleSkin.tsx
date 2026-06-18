@@ -99,7 +99,12 @@ export function PowerConsoleSkin({
         <div style={labelStyle}>Service Area</div>
         <select
           value={zip}
-          onChange={e => onZipChange?.(e.target.value)}
+          onChange={e => {
+            const newZip = e.target.value;
+            const newMin = SERVICE_AREAS[newZip]?.minWindows ?? 1;
+            onZipChange?.(newZip);
+            if (windowCount < newMin) onWindowCountChange(newMin);
+          }}
           style={{ ...inputStyle, cursor: "pointer", marginBottom: 12 }}
         >
           {Object.entries(SERVICE_AREAS).map(([z, a]) => (

@@ -123,7 +123,7 @@ export function GameSkin(props: SkinProps) {
   function dialogue(s: typeof step): string {
     const slot = date ? `${formatDate(date)} at ${formatTime(time)}` : `${formatDate(FALLBACK_DATE)} at ${formatTime(FALLBACK_TIME)}`;
     switch (s) {
-      case "location": return `Greetings, traveler.\nI see your booking is set for Santa Cruz, CA 95060.\nIs that the correct area for our crew?`;
+      case "location": return `Greetings, traveler.\nI see your booking is set for ${SERVICE_AREAS[localZip]?.name ?? "Santa Cruz"}, CA ${localZip}.\nIs that the correct area for our crew?`;
       case "timeslot": return `Excellent. Your slot is held for ${slot}.\nShall we keep this time, or would you prefer another?`;
       case "windows":  return `Very well. How many windows shall we cleanse today?\nEach pane: $22. No ladders, no mess, no hidden fees.`;
       case "estimate": return `Understood — ${windowCount} window${windowCount!==1?"s":""} at $${windowCount*PRICE_PER_WINDOW}.\nShall I also arrange a full-house estimate?\nNo extra charge for the visit.`;
@@ -178,7 +178,7 @@ export function GameSkin(props: SkinProps) {
   // ── Menu per step ─────────────────────────────────────────────
   function renderMenu() {
     switch (step) {
-      case "location": return (<>{ffBtn("1.  ✦  Yes, that's my area (95060)", () => handleGoToStep("timeslot"), true)}{ffBtn("2.  ✧  Enter a different ZIP", () => { setShowZipInput(true); setZipError(""); })}{ffBtn("3.  ✧  New ZIP / Start over", () => { onZipChange?.(DEFAULT_ZIP); handleGoToStep("location"); })}</>);
+      case "location": return (<>{ffBtn(`1.  ✦  Yes, that's my area (${localZip})`, () => handleGoToStep("timeslot"), true)}{ffBtn("2.  ✧  Enter a different ZIP", () => { setShowZipInput(true); setZipError(""); })}{ffBtn("3.  ✧  New ZIP / Start over", () => { onZipChange?.(DEFAULT_ZIP); handleGoToStep("location"); })}</>);
       case "timeslot": return (<>{ffBtn(`1.  ✦  Perfect — keep ${date ? formatDate(date) : "July 4th"}`, () => handleGoToStep("windows"), true)}{ffBtn("2.  ✧  See other times", () => setShowSlots(v=>!v))}{ffBtn("3.  ✧  Back", () => handleGoToStep("location"))}</>);
       case "windows":  return (<>{ffBtn(`1.  ✦  ${windowCount}w · $${windowCount*PRICE_PER_WINDOW} — continue`, () => handleGoToStep("estimate"), true)}{ffBtn("2.  ✧  Back", () => handleGoToStep("timeslot"))}</>);
       case "estimate": return (<>{ffBtn("1.  ✦  No — windows only", () => { onNeedsEstimateChange(false); handleGoToStep("contact"); }, true)}{ffBtn("2.  ✧  Yes — include full estimate", () => { onNeedsEstimateChange(true); handleGoToStep("contact"); })}{ffBtn("3.  ✧  Back", () => handleGoToStep("windows"))}</>);
