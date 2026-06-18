@@ -49,6 +49,9 @@ export interface SkinProps {
   // Navigation
   onGoToSummary: () => void;
 
+  // Current zip from map/page — synced down so skins show the dot-selected area
+  selectedZip?: string;
+
   // Called when the user enters a different ZIP — bubbles up to page.tsx → MapPanel
   onZipChange?: (zip: string) => void;
 

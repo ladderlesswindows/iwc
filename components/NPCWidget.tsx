@@ -99,6 +99,7 @@ export function NPCWidget(props: Props) {
     onDateChange, onTimeChange, onWindowCountChange,
     onNeedsEstimateChange, onEstimateDeadlineChange,
     paused, onResume, onGoToSummary, onZipChange,
+    selectedZip,
     address, onAddressChange,
     firstName, phone, email,
     onFirstNameChange, onPhoneChange, onEmailChange,

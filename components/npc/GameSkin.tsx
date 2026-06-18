@@ -24,7 +24,7 @@ export function GameSkin(props: SkinProps) {
   const { step, goToStep, questItems, date, time, windowCount, needsEstimate,
           onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
           slotMap, paused, onResume, onGoToSummary, onZipChange, onAddressChange,
-          mode } = props;
+          selectedZip, mode } = props;
 
   // Light mode only affects the Q&A panel — canvas is always dark
   const isLight = mode === "light";
@@ -55,8 +55,12 @@ export function GameSkin(props: SkinProps) {
   const [showZipInput, setShowZipInput] = useState(false);
   const [zipInputValue, setZipInputValue] = useState("");
   const [zipError, setZipError] = useState("");
-  const [localZip, setLocalZip] = useState(DEFAULT_ZIP);
+  const [localZip, setLocalZip] = useState(selectedZip ?? DEFAULT_ZIP);
   const [street, setStreet] = useState("");
+
+  useEffect(() => {
+    if (selectedZip && selectedZip !== localZip) setLocalZip(selectedZip);
+  }, [selectedZip]);
   const [apt, setApt]       = useState("");
   const [city, setCity]     = useState("");
   const typeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);

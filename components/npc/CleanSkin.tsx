@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
@@ -88,13 +88,18 @@ function Counter({ T, count, onChange }: { T: Tokens; count: number; onChange: (
 export function CleanSkin(props: SkinProps) {
   const { step, goToStep, questItems, date, time, windowCount, needsEstimate,
           onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
-          slotMap, onGoToSummary, onZipChange, onAddressChange, mode, onSkinChange } = props;
+          slotMap, onGoToSummary, onZipChange, onAddressChange, selectedZip,
+          mode, onSkinChange } = props;
 
   const T: Tokens = mode === "light" ? LIGHT : DARK;
 
   const [showSlots, setShowSlots]         = useState(false);
   const [localEstimate, setLocalEstimate] = useState(true);
-  const [currentZip, setCurrentZip]       = useState(DEFAULT_ZIP);
+  const [currentZip, setCurrentZip]       = useState(selectedZip ?? DEFAULT_ZIP);
+
+  useEffect(() => {
+    if (selectedZip && selectedZip !== currentZip) setCurrentZip(selectedZip);
+  }, [selectedZip]);
   const [streetLine, setStreetLine]       = useState("");
   const [apt, setApt]                     = useState("");
   const [town, setTown]                   = useState("");
