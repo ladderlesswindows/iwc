@@ -52,6 +52,10 @@ export interface SkinProps {
   // Called when the user enters a different ZIP — bubbles up to page.tsx → MapPanel
   onZipChange?: (zip: string) => void;
 
+  // Called when user fills in a street address — bubbles to page.tsx → MapPanel geocode
+  address?: string;
+  onAddressChange?: (v: string) => void;
+
   // Theme — light/dark
   mode: ThemeMode;
 

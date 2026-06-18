@@ -44,11 +44,13 @@ interface Props {
   onEmailChange: (v: string) => void;
   onNotesChange: (v: string) => void;
 
+  selectedZip?: string;
   paused: boolean;
   onResume: () => void;
   onGoToSummary: () => void;
   onStepChange?: (step: Step) => void;
   onZipChange?: (zip: string) => void;
+  goTrigger?: number;
 }
 
 export function NPCWidget(props: Props) {
@@ -59,16 +61,22 @@ export function NPCWidget(props: Props) {
     address, firstName, lastName, phone, email, notes,
     onAddressChange, onFirstNameChange, onLastNameChange,
     onPhoneChange, onEmailChange, onNotesChange,
-    paused, onResume, onGoToSummary, onStepChange, onZipChange,
+    selectedZip, paused, onResume, onGoToSummary, onStepChange, onZipChange,
   } = props;
 
   // ── Panel state ───────────────────────────────────────────────────
-  const [skin, setSkin]   = useState<Skin>("game");
+  const [skin, setSkin]   = useState<Skin>(() =>
+    typeof window !== "undefined" && window.innerWidth < 768 ? "game" : "clean"
+  );
   const [mode, setMode]   = useState<ThemeMode>("dark");
   const [step, setStep]   = useState<Step>("location");
   const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
 
   useEffect(() => { getAvailableSlots().then(setSlotMap); }, []);
+
+  useEffect(() => {
+    if (props.goTrigger && step === "location") goToStep("timeslot");
+  }, [props.goTrigger]);
 
   function goToStep(s: Step) {
     setStep(s);
@@ -83,8 +91,7 @@ export function NPCWidget(props: Props) {
     { step:"location", label:"Location",   confirmed:isConfirmed("location"), value:"Santa Cruz, CA 95060" },
     { step:"timeslot", label:"Date & Time", confirmed:isConfirmed("timeslot"), value: date ? `${formatDate(date)} · ${formatTime(time)}` : `${formatDate(FALLBACK_DATE)} · ${formatTime(FALLBACK_TIME)}` },
     { step:"windows",  label:"Windows",    confirmed:isConfirmed("windows"),  value:`${windowCount}× · $${windowCount * 22}` },
-    { step:"estimate", label:"Estimate",   confirmed:isConfirmed("estimate"), value:needsEstimate ? "Full house" : "Windows only" },
-    { step:"contact",  label:"Contact",    confirmed:isConfirmed("contact"),  value:"On file" },
+    { step:"contact",  label:"Address",    confirmed:isConfirmed("contact"),  value:"On file" },
   ];
 
   const skinProps: SkinProps = {
@@ -93,6 +100,7 @@ export function NPCWidget(props: Props) {
     onDateChange, onTimeChange, onWindowCountChange,
     onNeedsEstimateChange, onEstimateDeadlineChange,
     paused, onResume, onGoToSummary, onZipChange,
+    address, onAddressChange,
     mode,
     onSkinChange: setSkin,
   };
@@ -134,7 +142,7 @@ export function NPCWidget(props: Props) {
             </span>
           ) : (
             <span style={{ fontSize:10, fontWeight:600, color:labelText, letterSpacing:"0.12em", textTransform:"uppercase" }}>
-              Booking Guide
+              Instant Booking
             </span>
           )}
         </div>
@@ -192,6 +200,8 @@ export function NPCWidget(props: Props) {
             date={date} time={time} windowCount={windowCount}
             needsEstimate={needsEstimate} estimateDeadline={estimateDeadline}
             slotMap={slotMap}
+            selectedZip={selectedZip}
+            zipConfirmed={step !== "location"}
             onDateChange={onDateChange} onTimeChange={onTimeChange}
             onWindowCountChange={onWindowCountChange}
             onNeedsEstimateChange={onNeedsEstimateChange}
