@@ -26,15 +26,16 @@ export interface PowerConsoleSkinProps {
   onPhoneChange: (v: string) => void;
   onEmailChange: (v: string) => void;
   onNotesChange: (v: string) => void;
+  onZipChange?: (zip: string) => void;
   onGoToSummary: () => void;
   mode: ThemeMode;
   onSkinChange: (skin: Skin) => void;
 }
 
 export function PowerConsoleSkin({
-  date, time, windowCount, slotMap, selectedZip, zipConfirmed,
-  onDateChange, onTimeChange, onWindowCountChange,
-  onAddressChange,
+  date, time, windowCount, needsEstimate, slotMap, selectedZip,
+  onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
+  onZipChange, onAddressChange,
   onGoToSummary, mode, onSkinChange,
 }: PowerConsoleSkinProps) {
   const T: Tokens = mode === "light" ? LIGHT : DARK;
@@ -93,26 +94,22 @@ export function PowerConsoleSkin({
         >← Guide</button>
       </div>
 
-      {/* ── Top section: confirmed zip + counter, or bare counter if no zip yet ── */}
-      <div style={{ ...sectionStyle, borderColor: zipConfirmed ? T.ACCENT_BORDER : T.CARD_BORDER }}>
-        {zipConfirmed ? (
-          <div style={labelStyle}>Confirmed</div>
-        ) : (
-          <div style={labelStyle}>Windows</div>
-        )}
+      {/* ── Service Area + Windows ── */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Service Area</div>
+        <select
+          value={zip}
+          onChange={e => onZipChange?.(e.target.value)}
+          style={{ ...inputStyle, cursor: "pointer", marginBottom: 12 }}
+        >
+          {Object.entries(SERVICE_AREAS).map(([z, a]) => (
+            <option key={z} value={z} style={{ background: "#080810" }}>{z} — {a.name}</option>
+          ))}
+        </select>
 
-        {/* Service area row — only when zip is confirmed */}
-        {zipConfirmed && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${T.CARD_BORDER}` }}>
-            <span style={{ fontSize: 12, color: T.GREEN }}>✓</span>
-            <span style={{ fontSize: 12, color: T.TEXT, fontWeight: 500 }}>
-              {zip}
-              {area ? <span style={{ color: T.TEXT_DIM }}> · {area.name}</span> : null}
-            </span>
-          </div>
-        )}
+        <div style={{ height: 1, background: T.CARD_BORDER, marginBottom: 12 }} />
 
-        {/* Window counter row */}
+        <div style={labelStyle}>Windows</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button onClick={() => onWindowCountChange(Math.max(minWindows, windowCount - 1))}
@@ -124,11 +121,28 @@ export function PowerConsoleSkin({
           </div>
           <span style={{ fontSize: 13, color: T.ACCENT, fontWeight: 700 }}>${total}</span>
         </div>
-        {zipConfirmed && windowCount <= minWindows && minWindows > 1 && (
+        {windowCount <= minWindows && minWindows > 1 && (
           <div style={{ fontSize: 8.5, color: T.TEXT_FAINT, marginTop: 6 }}>
             {minWindows}-window minimum for this area
           </div>
         )}
+      </div>
+
+      {/* ── Estimate ── */}
+      <div style={sectionStyle}>
+        <div style={labelStyle}>Estimate</div>
+        <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 9, cursor: "pointer" }}>
+            <input type="checkbox" checked={needsEstimate} onChange={() => onNeedsEstimateChange(true)}
+              style={{ marginTop: 2, accentColor: T.ACCENT, flexShrink: 0, width: 14, height: 14 }} />
+            <span style={{ fontSize: 12, color: T.TEXT, lineHeight: 1.4 }}>Include full estimate when on site</span>
+          </label>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 9, cursor: "pointer" }}>
+            <input type="checkbox" checked={!needsEstimate} onChange={() => onNeedsEstimateChange(false)}
+              style={{ marginTop: 2, accentColor: T.ACCENT, flexShrink: 0, width: 14, height: 14 }} />
+            <span style={{ fontSize: 12, color: T.TEXT_DIM, lineHeight: 1.4 }}>Windows only — no estimate needed</span>
+          </label>
+        </div>
       </div>
 
       {/* ── Date & Time ── */}

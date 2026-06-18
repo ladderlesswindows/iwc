@@ -212,6 +212,7 @@ export function NPCWidget(props: Props) {
             onAddressChange={onAddressChange} onFirstNameChange={onFirstNameChange}
             onLastNameChange={onLastNameChange} onPhoneChange={onPhoneChange}
             onEmailChange={onEmailChange} onNotesChange={onNotesChange}
+            onZipChange={onZipChange}
             onGoToSummary={onGoToSummary}
             mode={mode}
             onSkinChange={setSkin}
