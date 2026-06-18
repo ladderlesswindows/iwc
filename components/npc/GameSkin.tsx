@@ -23,9 +23,8 @@ const C = {
 export function GameSkin(props: SkinProps) {
   const { step, goToStep, questItems, date, time, windowCount, needsEstimate,
           onDateChange, onTimeChange, onWindowCountChange, onNeedsEstimateChange,
-          slotMap, paused, onResume, onGoToSummary, onZipChange, mode,
-          firstName, phone, email,
-          onFirstNameChange, onPhoneChange, onEmailChange } = props;
+          slotMap, paused, onResume, onGoToSummary, onZipChange, onAddressChange,
+          mode } = props;
 
   // Light mode only affects the Q&A panel — canvas is always dark
   const isLight = mode === "light";
@@ -56,6 +55,10 @@ export function GameSkin(props: SkinProps) {
   const [showZipInput, setShowZipInput] = useState(false);
   const [zipInputValue, setZipInputValue] = useState("");
   const [zipError, setZipError] = useState("");
+  const [localZip, setLocalZip] = useState(DEFAULT_ZIP);
+  const [street, setStreet] = useState("");
+  const [apt, setApt]       = useState("");
+  const [city, setCity]     = useState("");
   const typeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Canvas animation ──────────────────────────────────────────
@@ -120,7 +123,7 @@ export function GameSkin(props: SkinProps) {
       case "timeslot": return `Excellent. Your slot is held for ${slot}.\nShall we keep this time, or would you prefer another?`;
       case "windows":  return `Very well. How many windows shall we cleanse today?\nEach pane: $22. No ladders, no mess, no hidden fees.`;
       case "estimate": return `Understood — ${windowCount} window${windowCount!==1?"s":""} at $${windowCount*PRICE_PER_WINDOW}.\nShall I also arrange a full-house estimate?\nNo extra charge for the visit.`;
-      case "contact":  return `One last thing — any name or contact for our records?\nAll fields are optional. We'll find you by address.`;
+      case "contact":  return `One last thing, traveler — where shall our crew find you?\nStreet and city will do. All else is optional.\nCA ${localZip} · Service confirmed.`;
       case "complete": return `The quest is complete, traveler.\nYour order awaits — press Book Now when ready.\nMay your windows shine like crystal.`;
     }
   }
@@ -140,8 +143,15 @@ export function GameSkin(props: SkinProps) {
       setZipError("Not in range. Valid: 95060 95062 95003 95018 95066 95073 95064 95065 95010");
       return;
     }
+    setLocalZip(z);
     onZipChange?.(z);
     handleGoToStep("timeslot");
+  }
+
+  function pushAddress(s: string, a: string, c: string) {
+    if (!s.trim() || !c.trim()) return;
+    const full = [s.trim(), a.trim()].filter(Boolean).join(" ") + `, ${c.trim()}, CA ${localZip}`;
+    onAddressChange?.(full);
   }
 
   // Auto-type on mount
@@ -208,9 +218,20 @@ export function GameSkin(props: SkinProps) {
     );
     if (step === "contact") return (
       <div style={{ display:"flex", flexDirection:"column", gap:5, margin:"8px 0" }}>
-        <input type="text" placeholder="Name (optional)" value={firstName ?? ""} onChange={e => onFirstNameChange?.(e.target.value)} style={ffInput} />
-        <input type="tel" placeholder="Phone (optional)" value={phone ?? ""} onChange={e => onPhoneChange?.(e.target.value)} style={ffInput} />
-        <input type="email" placeholder="Email (optional)" value={email ?? ""} onChange={e => onEmailChange?.(e.target.value)} style={ffInput} />
+        <div style={{ display:"flex", gap:5 }}>
+          <input type="text" placeholder="Street address" value={street} autoComplete="address-line1"
+            onChange={e => { setStreet(e.target.value); pushAddress(e.target.value, apt, city); }}
+            style={{ ...ffInput, flex:1 }} />
+          <input type="text" placeholder="Apt" value={apt} autoComplete="address-line2"
+            onChange={e => { setApt(e.target.value); pushAddress(street, e.target.value, city); }}
+            style={{ ...ffInput, width:48, flex:"none" }} />
+        </div>
+        <input type="text" placeholder="City / Town" value={city} autoComplete="address-level2"
+          onChange={e => { setCity(e.target.value); pushAddress(street, apt, e.target.value); }}
+          style={ffInput} />
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:"#7ec8e3", letterSpacing:0.5, opacity:0.6 }}>
+          CA {localZip}
+        </div>
       </div>
     );
     return null;
