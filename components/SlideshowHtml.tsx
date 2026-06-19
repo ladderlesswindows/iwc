@@ -6,11 +6,17 @@ import { motion } from "framer-motion";
 const DURATION = 5000;
 const FAST_DURATION = 600;
 
+const SVG_STYLE: React.CSSProperties = { width: "100%", borderRadius: 10 };
+const NAV_BTN_STYLE: React.CSSProperties = {
+  fontSize: 12, padding: "4px 10px", borderRadius: 7,
+  border: "1px solid #ddd", background: "white", color: "#555", cursor: "pointer",
+};
+
 const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   {
     caption: "✅ Your worker will show up on time — or you'll get a window free.",
     svg: (
-      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 10 }}>
+      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={SVG_STYLE}>
         <rect width="520" height="280" fill="#E8F4FD" rx="12"/>
         <rect y="220" width="520" height="60" fill="#C8DEB0"/>
         <rect y="230" width="520" height="30" fill="#9BB8A0"/>
@@ -48,7 +54,7 @@ const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   {
     caption: "🪣 Specialized equipment agitates the dirt and rinses it away with purified water — leaving zero spots.",
     svg: (
-      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 10 }}>
+      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={SVG_STYLE}>
         <rect width="520" height="280" fill="#E8F4FD" rx="12"/>
         <rect x="80" y="20" width="360" height="260" fill="#F5EDD8"/>
         <rect x="110" y="180" width="70" height="70" fill="#B8D4E8" rx="3"/>
@@ -80,7 +86,7 @@ const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   {
     caption: "🪟 Screen cleaning is free — and they'll remove and reinstall them for a small fee.",
     svg: (
-      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 10 }}>
+      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={SVG_STYLE}>
         <rect width="520" height="280" fill="#F0F7F0" rx="12"/>
         <rect x="0" y="180" width="520" height="100" fill="#C8DEB0"/>
         <rect x="60" y="80" width="400" height="200" fill="#F5EDD8"/>
@@ -111,7 +117,7 @@ const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   {
     caption: "💧 He'll wait for you to see that the water droplets dry completely spot-free before leaving.",
     svg: (
-      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 10 }}>
+      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={SVG_STYLE}>
         <rect width="520" height="280" fill="#FEF9EC" rx="12"/>
         <rect x="0" y="210" width="520" height="70" fill="#C8DEB0"/>
         <rect x="195" y="80" width="130" height="200" fill="#E8D5B5"/>
@@ -144,7 +150,7 @@ const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   {
     caption: "📋 Need a full estimate? Your worker will gladly provide one — completely free.",
     svg: (
-      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 10 }}>
+      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={SVG_STYLE}>
         <rect width="520" height="280" fill="#F0F4FF" rx="12"/>
         <rect x="0" y="210" width="520" height="70" fill="#C8DEB0"/>
         <circle cx="200" cy="120" r="20" fill="#F5C5A3"/>
@@ -170,7 +176,7 @@ const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   {
     caption: "📱 Your worker signs out digitally — and you'll receive a review form plus a discount on your next visit.",
     svg: (
-      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", borderRadius: 10 }}>
+      <svg viewBox="0 0 520 280" xmlns="http://www.w3.org/2000/svg" style={SVG_STYLE}>
         <rect width="520" height="280" fill="#E8F4FD" rx="12"/>
         <rect y="220" width="520" height="60" fill="#C8DEB0"/>
         <rect y="230" width="520" height="30" fill="#9BB8A0"/>
@@ -205,7 +211,7 @@ const SLIDES: { svg: React.ReactNode; caption: string }[] = [
   },
 ];
 
-export default function SlideshowHtml() {
+export default function SlideshowHtml({ onClose }: { onClose?: () => void }) {
   const [current, setCurrent]   = useState(0);
   const [progress, setProgress] = useState(0);
   const [fast, setFast]         = useState(false);
@@ -292,8 +298,23 @@ export default function SlideshowHtml() {
         background: "white",
         borderRadius: 14,
         overflow: "hidden",
+        border: "1px solid rgba(126,200,227,0.22)",
         boxShadow: "0 8px 40px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.18)",
+        position: "relative",
       }}>
+        {/* Close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              position: "absolute", top: 7, right: 8, zIndex: 2,
+              background: "rgba(0,0,0,0.12)", border: "none", borderRadius: "50%",
+              width: 22, height: 22, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 11, color: "#555", lineHeight: 1,
+            }}
+          >✕</button>
+        )}
         {/* SVG scene */}
         <div style={{ padding: "10px 10px 0" }}>
           <motion.div
@@ -329,10 +350,7 @@ export default function SlideshowHtml() {
 
         {/* Dots + nav */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px 12px" }}>
-          <button onClick={handlePrev}
-            style={{ fontSize: 12, padding: "4px 10px", borderRadius: 7, border: "1px solid #ddd", background: "white", color: "#555", cursor: "pointer" }}>
-            ← Prev
-          </button>
+          <button onClick={handlePrev} style={NAV_BTN_STYLE}>← Prev</button>
 
           <div style={{ display: "flex", gap: 6 }}>
             {SLIDES.map((_, i) => (
@@ -348,10 +366,7 @@ export default function SlideshowHtml() {
             ))}
           </div>
 
-          <button onClick={handleNext}
-            style={{ fontSize: 12, padding: "4px 10px", borderRadius: 7, border: "1px solid #ddd", background: "white", color: "#555", cursor: "pointer" }}>
-            Next →
-          </button>
+          <button onClick={handleNext} style={NAV_BTN_STYLE}>Next →</button>
         </div>
       </div>
     </motion.div>

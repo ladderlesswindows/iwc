@@ -14,6 +14,29 @@ import { formatTime, formatDateFull, FALLBACK_DATE } from "@/lib/availability";
 import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
 import SlideshowHtml from "@/components/SlideshowHtml";
 
+// ── Shared design tokens ──────────────────────────────────────────────────
+const TEAL = "rgba(126,200,227,";
+
+function glassCard({ alpha = 0.84, blur = 18, border, radius = 14, shadow }: {
+  alpha?: number; blur?: number; border?: string; radius?: number; shadow?: string;
+} = {}): React.CSSProperties {
+  return {
+    background: `rgba(5,5,8,${alpha})`,
+    backdropFilter: `blur(${blur}px)`,
+    WebkitBackdropFilter: `blur(${blur}px)`,
+    border: border ?? "1px solid rgba(255,255,255,0.07)",
+    borderRadius: radius,
+    ...(shadow ? { boxShadow: shadow } : {}),
+  };
+}
+
+// Shared fade-up enter/exit — spread onto motion.div, add your own transition
+const FADE_UP = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit:    { opacity: 0, y: 12 },
+};
+
 interface Props {
   step: Step;
   selectedZip: string;
@@ -30,19 +53,20 @@ interface Props {
   onDateChange?: (d: string) => void;
   onTimeChange?: (t: string) => void;
   showSlideshow?: boolean;
-  onBack?: () => void;
 }
 
-export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange, showSlideshow, onBack }: Props) {
+export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange, showSlideshow }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapLoaded, setMapLoaded]         = useState(false);
   const [hasFlown, setHasFlown]           = useState(false);
   const [overlaysVisible, setOverlaysVisible] = useState(false);
-  const [videoState, setVideoState]       = useState<"hidden" | "playing" | "dismissed">("hidden");
+  const [videoTriggered, setVideoTriggered] = useState(false);
   const CARD_W = 292;
   const [centeredX, setCenteredX]         = useState(() => Math.max(16, (window.innerWidth - CARD_W) / 2));
+  const [cardMovedLeft, setCardMovedLeft]   = useState(false);
+  const [slideshowClosed, setSlideshowClosed] = useState(false);
   const onZipChangeRef = useRef(onZipChange);
   const onGoRef = useRef(onGo);
   const onOpenRef = useRef(onOpen);
@@ -91,14 +115,32 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // ── Video box transitions ────────────────────────────────────────────
+  // ── Card-position + video transitions ───────────────────────────────
   useEffect(() => {
-    if (stepIdx > 0) {
-      setVideoState(s => s === "playing" ? "dismissed" : s);
-    } else {
-      setVideoState(s => s === "dismissed" ? "hidden" : s);
+    if (stepIdx >= 2) {
+      setCardMovedLeft(true);
+      setVideoTriggered(false);   // any confirmed step kills the video
+    } else if (stepIdx === 0) {
+      setCardMovedLeft(false);
+      setSlideshowClosed(false);
+      setVideoTriggered(false);   // full reset on restart
     }
   }, [stepIdx]);
+
+  // ── Show video on first interaction with anything on the page ────────
+  useEffect(() => {
+    function onInteract() {
+      setVideoTriggered(true);
+      document.removeEventListener("click",   onInteract, true);
+      document.removeEventListener("keydown", onInteract, true);
+    }
+    document.addEventListener("click",   onInteract, true);
+    document.addEventListener("keydown", onInteract, true);
+    return () => {
+      document.removeEventListener("click",   onInteract, true);
+      document.removeEventListener("keydown", onInteract, true);
+    };
+  }, []);
 
   // ── Auto-set window count to zip minimum when entering timeslot step ──
   useEffect(() => {
@@ -172,12 +214,9 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           setMapLoaded(true);
           setOverlaysVisible(true);
           markersRef.current.forEach(m => { m.getElement().style.display = "block"; });
-          // Clicking the map background (not the dots) opens the panel + shows video
+          // Clicking the map background (not the dots) opens the panel
           map.on("click", () => {
-            if (stepIdxRef.current === 0) {
-              onOpenRef.current?.();
-              setVideoState(s => s === "hidden" ? "playing" : s);
-            }
+            if (stepIdxRef.current === 0) onOpenRef.current?.();
           });
         }, 8800);
       });
@@ -303,7 +342,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
             initial={{ opacity: 0, x: centeredX, y: "-50%", scale: 0.93 }}
             animate={{
               opacity: 1, scale: 1,
-              x: stepIdx >= 2 ? 16 : centeredX,
+              x: (cardMovedLeft || stepIdx >= 2) ? 16 : centeredX,
               y: "-50%",
             }}
             exit={{ opacity: 0, scale: 0.94, x: centeredX, y: "-50%" }}
@@ -327,65 +366,50 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
 
       {/* Slideshow — top-center at coverage-alert level */}
       <AnimatePresence>
-        {(stepIdx >= 3 || showSlideshow) && (
+        {(stepIdx >= 3 || showSlideshow) && !slideshowClosed && (
           <div key="slideshow-wrap" style={{
             position: "absolute", top: 54, left: "50%", transform: "translateX(-50%)",
-            width: "min(380px, 72%)", zIndex: 9, pointerEvents: "auto",
+            width: "min(342px, 65%)", zIndex: 9, pointerEvents: "auto",
           }}>
-            <SlideshowHtml />
+            <SlideshowHtml onClose={() => setSlideshowClosed(true)} />
           </div>
         )}
       </AnimatePresence>
 
-      {/* Video box — looping intro clip, bottom-left, on first map click */}
+      {/* Video box — top-left, appears on first interaction, slides down when coverage alert shows, dismissed when any step is confirmed */}
       <AnimatePresence>
-        {videoState === "playing" && (
+        {videoTriggered && stepIdx <= 1 && (
           <motion.div
             key="video-box"
             initial={{ opacity: 0, y: 20, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            animate={{
+              opacity: 1, scale: 1,
+              y: stepIdx === 1 && !!area?.alert ? 165 : 0,
+            }}
             exit={{ opacity: 0, y: 10, scale: 0.94 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            transition={{
+              opacity: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+              scale:   { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+              y: stepIdx === 1 && !!area?.alert
+                ? { type: "spring", stiffness: 180, damping: 28, delay: 2.5 }
+                : { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+            }}
             style={{
               position: "absolute", top: 16, left: 16, zIndex: 10,
-              width: 240, borderRadius: 12, overflow: "hidden",
-              border: "1px solid rgba(126,200,227,0.22)",
+              width: 240, borderRadius: 14,
+              border: `1px solid ${TEAL}0.22)`,
               boxShadow: "0 8px 32px rgba(0,0,0,0.55)",
+              background: "rgba(5,5,8,0.88)",
+              padding: 3,
               pointerEvents: "none",
             }}
           >
             <video
               src="/videos/demo.mp4"
               autoPlay loop muted playsInline
-              style={{ width: "100%", display: "block" }}
+              style={{ width: "100%", display: "block", borderRadius: 11 }}
             />
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Back button — replaces video after step progresses */}
-      <AnimatePresence>
-        {videoState === "dismissed" && (
-          <motion.button
-            key="back-btn"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.35 }}
-            onClick={onBack}
-            style={{
-              position: "absolute", top: 16, left: 16, zIndex: 10,
-              background: "rgba(5,5,8,0.82)",
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              border: "1px solid rgba(126,200,227,0.22)",
-              borderRadius: 10, padding: "8px 14px",
-              color: "rgba(126,200,227,0.85)",
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
-              cursor: "pointer", pointerEvents: "auto", fontFamily: "inherit",
-            }}
-          >
-            ← Back
-          </motion.button>
         )}
       </AnimatePresence>
 
@@ -491,7 +515,6 @@ function CalendarOverlay({
     return `${fmt(d0)} – ${fmt(d6)}`;
   })();
 
-  const TEAL = "rgba(126,200,227,";
   const navBtn: React.CSSProperties = {
     background: "transparent", border: `1px solid ${TEAL}0.14)`,
     borderRadius: 6, color: `${TEAL}0.5)`, fontSize: 14, lineHeight: 1,
@@ -635,7 +658,6 @@ function MapBookingCard({
   windowCount: number; minWindows: number;
   onWindowCountChange?: (n: number) => void;
 }) {
-  const TEAL = "rgba(126,200,227,";
   const atMin = windowCount <= minWindows;
   const atMax = windowCount >= MAX_WINDOWS;
   const btnBase: React.CSSProperties = {
@@ -647,22 +669,11 @@ function MapBookingCard({
   };
   return (
     <div style={{
-      background: "rgba(5,5,8,0.88)",
-      backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
-      border: `1px solid ${TEAL}0.14)`,
-      borderRadius: 18,
-      boxShadow: "0 10px 48px rgba(0,0,0,0.6)",
+      ...glassCard({ alpha: 0.88, blur: 22, border: `1px solid ${TEAL}0.14)`, radius: 18, shadow: "0 10px 48px rgba(0,0,0,0.6)" }),
       width: 292, overflow: "hidden",
     }}>
-      {/* Calendar section */}
-      <CalendarOverlay
-        date={date} time={time} slotMap={slotMap}
-        onDateChange={onDateChange} onTimeChange={onTimeChange}
-      />
-      {/* Divider */}
-      <div style={{ height: 1, background: `${TEAL}0.1)`, marginInline: "18px" }} />
-      {/* Window counter section */}
-      <div style={{ padding: "10px 18px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+      {/* Window counter section — top */}
+      <div style={{ padding: "10px 18px 10px", display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: `${TEAL}0.45)`, marginRight: 4 }}>
           Windows
         </span>
@@ -681,6 +692,13 @@ function MapBookingCard({
           ${windowCount * PRICE_PER_WINDOW}
         </span>
       </div>
+      {/* Divider */}
+      <div style={{ height: 1, background: `${TEAL}0.1)`, marginInline: "18px" }} />
+      {/* Calendar section */}
+      <CalendarOverlay
+        date={date} time={time} slotMap={slotMap}
+        onDateChange={onDateChange} onTimeChange={onTimeChange}
+      />
     </div>
   );
 }
@@ -708,40 +726,46 @@ function PhotosOverlay({ windowCount }: { windowCount: number }) {
       transition={{ duration: 0.4 }}
       style={{
         position: "absolute", inset: 0,
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: "28px 20px", gap: 14, pointerEvents: "none",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        pointerEvents: "none",
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 2 }}>
-        What counts as {set} window{set !== 1 ? "s" : ""}
-      </div>
+      <div style={{
+        ...glassCard({ alpha: 0.60, blur: 18, border: `1px solid ${TEAL}0.22)`, radius: 16, shadow: "0 8px 36px rgba(0,0,0,0.5)" }),
+        padding: "18px 16px 16px",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+        width: "min(400px, 88%)",
+      }}>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>
+          What counts as {set} window{set !== 1 ? "s" : ""}
+        </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 380 }}>
-        {photos.map((suffix, i) => (
-          <motion.div
-            key={`${set}-${i}`}
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.32, delay: i * 0.07 }}
-            style={{
-              borderRadius: 11, overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.1)",
-              aspectRatio: "4/3",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/examples/example${suffix}.jpg`}
-              alt={`${set}-window example`}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          </motion.div>
-        ))}
-      </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
+          {photos.map((suffix, i) => (
+            <motion.div
+              key={`${set}-${i}`}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.32, delay: i * 0.07 }}
+              style={{
+                borderRadius: 9, overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.1)",
+                aspectRatio: "4/3",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/examples/example${suffix}.jpg`}
+                alt={`${set}-window example`}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            </motion.div>
+          ))}
+        </div>
 
-      <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(126,200,227,0.85)", marginTop: 4 }}>
-        {windowCount} window{windowCount !== 1 ? "s" : ""} · ${windowCount * PRICE_PER_WINDOW}
+        <div style={{ fontSize: 15, fontWeight: 700, color: `${TEAL}0.85)` }}>
+          {windowCount} window{windowCount !== 1 ? "s" : ""} · ${windowCount * PRICE_PER_WINDOW}
+        </div>
       </div>
     </motion.div>
   );
@@ -775,14 +799,7 @@ function SummaryOverlay({ date, time, windowCount, needsEstimate, zip, step }: {
         pointerEvents: "none",
       }}
     >
-      <div style={{
-        background: "rgba(5,5,8,0.84)",
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 14, padding: "16px 22px",
-        minWidth: 230,
-      }}>
+      <div style={{ ...glassCard(), padding: "16px 22px", minWidth: 230 }}>
         {step === "complete" && (
           <div style={{ textAlign: "center", marginBottom: 12, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(126,200,227,0.7)", textTransform: "uppercase" }}>
             ✦ All Set
@@ -820,13 +837,8 @@ function CoverageAlertCard({ alert }: { alert: CoverageAlert }) {
       }}
     >
       <div style={{
-        background: "rgba(5,5,8,0.82)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        border: "1px solid rgba(251,191,36,0.25)",
-        borderRadius: 10,
+        ...glassCard({ alpha: 0.82, blur: 16, border: "1px solid rgba(251,191,36,0.25)", radius: 10, shadow: "0 4px 24px rgba(0,0,0,0.5)" }),
         padding: "10px 13px",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
       }}>
         <div style={{
           display: "flex", alignItems: "center", gap: 6, marginBottom: 8,
@@ -855,28 +867,13 @@ function CoverageAlertCard({ alert }: { alert: CoverageAlert }) {
 function ZipSelector({ selectedZip, onZipChange, onGo }: { selectedZip: string; onZipChange?: (zip: string) => void; onGo?: () => void }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 12 }}
+      {...FADE_UP}
       transition={{ duration: 0.45, ease: "easeOut", delay: 0.15 }}
-      style={{
-        position: "absolute",
-        bottom: "14%",
-        left: "10%",
-        pointerEvents: "auto",
-      }}
+      style={{ position: "absolute", bottom: "14%", left: "10%", pointerEvents: "auto" }}
     >
       <div style={{
-        background: "rgba(5,5,8,0.78)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(126,200,227,0.12)",
-        borderRadius: 12,
-        padding: "11px 16px",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+        ...glassCard({ alpha: 0.78, blur: 20, border: `1px solid ${TEAL}0.12)`, radius: 12, shadow: "0 4px 24px rgba(0,0,0,0.4)" }),
+        padding: "11px 16px", display: "flex", alignItems: "center", gap: 10,
       }}>
         <span style={{
           fontSize: 9.5, fontWeight: 600, letterSpacing: "0.14em",
@@ -943,26 +940,13 @@ function ZipSelector({ selectedZip, onZipChange, onGo }: { selectedZip: string; 
 function LogoBanner() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 12 }}
+      {...FADE_UP}
       transition={{ duration: 0.55, ease: "easeOut" }}
-      style={{
-        position: "absolute",
-        top: "50%",
-        left: "10%",
-        transform: "translateY(-50%)",
-        pointerEvents: "none",
-      }}
+      style={{ position: "absolute", top: "50%", left: "10%", transform: "translateY(-50%)", pointerEvents: "none" }}
     >
       <div style={{
-        background: "rgba(5,5,8,0.78)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(126,200,227,0.14)",
-        borderRadius: 16,
+        ...glassCard({ alpha: 0.78, blur: 20, border: `1px solid ${TEAL}0.14)`, radius: 16, shadow: "0 8px 40px rgba(0,0,0,0.45)" }),
         padding: "22px 30px 20px",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.45)",
       }}>
         <div style={{
           fontSize: 9, fontWeight: 700, letterSpacing: "0.22em",
@@ -988,61 +972,4 @@ function LogoBanner() {
   );
 }
 
-// ── Map Window Counter ────────────────────────────────────────────────
-
-function MapWindowCounter({ count, minWindows, onChange }: {
-  count: number; minWindows: number; onChange: (n: number) => void;
-}) {
-  const atMin = count <= minWindows;
-  const atMax = count >= MAX_WINDOWS;
-  const btnBase: React.CSSProperties = {
-    width: 30, height: 30, borderRadius: "50%",
-    background: "rgba(126,200,227,0.1)",
-    border: "1px solid rgba(126,200,227,0.25)",
-    color: "rgba(126,200,227,0.85)",
-    fontSize: 18, fontWeight: 700, lineHeight: 1,
-    display: "flex", alignItems: "center", justifyContent: "center",
-    transition: "all 0.15s", flexShrink: 0,
-  };
-  return (
-    <motion.div
-      variants={{
-        hidden:  { opacity: 0, x: -130, scale: 0.88 },
-        visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 1.0, delay: 2.0, ease: [0.16, 1, 0.3, 1] } },
-        exit:    { opacity: 0, x: -80, transition: { duration: 0.25 } },
-      }}
-      initial="hidden" animate="visible" exit="exit"
-      style={{ position: "absolute", bottom: "14%", left: "10%", pointerEvents: "auto" }}
-    >
-      <div style={{
-        background: "rgba(5,5,8,0.84)",
-        backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(126,200,227,0.16)",
-        borderRadius: 14, padding: "13px 18px 11px",
-        boxShadow: "0 6px 32px rgba(0,0,0,0.45)",
-      }}>
-        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" as const, color: "rgba(126,200,227,0.5)", marginBottom: 10 }}>
-          Windows
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button onClick={() => onChange(Math.max(minWindows, count - 1))}
-            style={{ ...btnBase, cursor: atMin ? "not-allowed" : "pointer", opacity: atMin ? 0.3 : 1 }}>−</button>
-          <div style={{ textAlign: "center" as const, minWidth: 28 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "rgba(255,255,255,0.92)", lineHeight: 1 }}>{count}</div>
-          </div>
-          <button onClick={() => onChange(Math.min(MAX_WINDOWS, count + 1))}
-            style={{ ...btnBase, cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.3 : 1 }}>+</button>
-        </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.32)", marginTop: 8 }}>
-          ${count * PRICE_PER_WINDOW} total
-        </div>
-        {atMin && minWindows > 1 && (
-          <div style={{ fontSize: 8.5, color: "rgba(126,200,227,0.4)", marginTop: 4, letterSpacing: "0.03em" }}>
-            {minWindows}-window min for this area
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
 

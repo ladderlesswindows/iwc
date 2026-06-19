@@ -35,6 +35,7 @@ export function AdminQuickAccess() {
     if (res.ok) {
       sessionStorage.setItem(SESSION_KEY, "owner");
       sessionStorage.setItem(PW_KEY, trimmed);
+      setLoading(false);
       router.push("/admin");
     } else {
       setError(true);
