@@ -506,7 +506,7 @@ export default function AdminPage() {
                     onClick={async () => {
                       const next = !promoEnabled;
                       setPromoEnabled(next);
-                      const stored = localStorage.getItem(PW_KEY) ?? "";
+                      const stored = sessionStorage.getItem(PW_KEY) ?? "";
                       await fetch("/api/admin/settings", {
                         method: "PATCH",
                         headers: { ...adminHeader(stored), "Content-Type": "application/json" },
@@ -563,7 +563,7 @@ export default function AdminPage() {
                     onClick={async () => {
                       if (!newCode.trim()) return;
                       setAddingCode(true);
-                      const stored = localStorage.getItem(PW_KEY) ?? "";
+                      const stored = sessionStorage.getItem(PW_KEY) ?? "";
                       const res = await fetch("/api/admin/promo-codes", {
                         method: "POST",
                         headers: { ...adminHeader(stored), "Content-Type": "application/json" },
@@ -605,7 +605,7 @@ export default function AdminPage() {
                     </span>
                     <button
                       onClick={async () => {
-                        const stored = localStorage.getItem(PW_KEY) ?? "";
+                        const stored = sessionStorage.getItem(PW_KEY) ?? "";
                         const res = await fetch("/api/admin/promo-codes", {
                           method: "DELETE",
                           headers: { ...adminHeader(stored), "Content-Type": "application/json" },
