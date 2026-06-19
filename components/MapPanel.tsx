@@ -641,6 +641,72 @@ function CalendarOverlay({
   );
 }
 
+// ── Promo Row ─────────────────────────────────────────────────────────
+
+function PromoRow({ promoCode, onPromoCodeChange, teal }: {
+  promoCode: string;
+  onPromoCodeChange?: (c: string) => void;
+  teal: string;
+}) {
+  const [applied, setApplied] = useState(false);
+
+  function apply() {
+    if (!promoCode.trim()) return;
+    setApplied(true);
+    setTimeout(() => setApplied(false), 2000);
+  }
+
+  return (
+    <div style={{ padding: "0 18px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          type="text"
+          placeholder="Promo code"
+          value={promoCode}
+          onChange={e => { setApplied(false); onPromoCodeChange?.(e.target.value.toUpperCase()); }}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); apply(); } }}
+          style={{
+            background: `${teal}0.06)`,
+            border: `1px solid ${applied ? teal + "0.55)" : teal + "0.22)"}`,
+            borderRadius: 8,
+            color: "rgba(255,255,255,0.85)",
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            padding: "6px 10px",
+            outline: "none",
+            flex: 1,
+            fontFamily: "inherit",
+            transition: "border-color 0.2s",
+          }}
+        />
+        <button
+          onClick={apply}
+          style={{
+            background: applied ? `${teal}0.2)` : `${teal}0.1)`,
+            border: `1px solid ${teal}0.3)`,
+            borderRadius: 8,
+            color: applied ? `${teal}1)` : `${teal}0.7)`,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            padding: "6px 10px",
+            cursor: "pointer",
+            flexShrink: 0,
+            fontFamily: "inherit",
+            transition: "all 0.15s",
+          }}
+        >
+          {applied ? "✓" : "Apply"}
+        </button>
+      </div>
+      <span style={{ fontSize: 9, color: `${teal}0.5)`, letterSpacing: "0.06em" }}>
+        {applied ? "Code saved — discount applied at checkout." : "Have a code? You may qualify for a discount."}
+      </span>
+    </div>
+  );
+}
+
 // ── Booking Card (Calendar + Window Counter combined) ─────────────────
 
 function MapBookingCard({
@@ -694,30 +760,7 @@ function MapBookingCard({
 
       {/* Promo code box — slides in when count exceeds minimum */}
       {showPromo && (
-        <div style={{ padding: "0 18px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
-          <input
-            type="text"
-            placeholder="Promo code"
-            value={promoCode ?? ""}
-            onChange={e => onPromoCodeChange?.(e.target.value.toUpperCase())}
-            style={{
-              background: `${TEAL}0.06)`,
-              border: `1px solid ${TEAL}0.22)`,
-              borderRadius: 8,
-              color: "rgba(255,255,255,0.85)",
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              padding: "6px 10px",
-              outline: "none",
-              width: "100%",
-              fontFamily: "inherit",
-            }}
-          />
-          <span style={{ fontSize: 9, color: `${TEAL}0.5)`, letterSpacing: "0.06em" }}>
-            Have a code? You may qualify for a discount.
-          </span>
-        </div>
+        <PromoRow promoCode={promoCode ?? ""} onPromoCodeChange={onPromoCodeChange} teal={TEAL} />
       )}
 
       {/* Divider */}
