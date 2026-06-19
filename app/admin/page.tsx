@@ -13,7 +13,7 @@ import type { Booking, BlockedSlot } from "@/app/admin/types";
 const SESSION_KEY = "iwc_admin";
 const PW_KEY = "iwc_admin_pw";
 
-type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "settings";
+type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "settings" | "analytics";
 
 interface GigCompletion {
   id: string;
@@ -45,6 +45,12 @@ export default function AdminPage() {
   const [batching, setBatching] = useState(false);
   const [completions, setCompletions] = useState<GigCompletion[]>([]);
   const [approving, setApproving]     = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<{
+    summary: { totalBookings: number; bookings30d: number; bookings7d: number; totalRevenue: number; revenue30d: number; revenue7d: number; avgTicket: number; avgWindows: number };
+    byZip: { zip: string; count: number; revenue: number }[];
+    dailyTrend: { date: string; count: number }[];
+    byWindowCount: { windows: number; count: number }[];
+  } | null>(null);
   const [promoEnabled, setPromoEnabled] = useState(false);
   const [promoCodes, setPromoCodes]     = useState<{ code: string; notes: string | null }[]>([]);
   const [newCode, setNewCode]           = useState("");
@@ -86,6 +92,11 @@ export default function AdminPage() {
     if (pcRes.ok) {
       const { codes } = await pcRes.json();
       if (codes) setPromoCodes(codes);
+    }
+    const anRes = await fetch("/api/admin/analytics", { headers: h });
+    if (anRes.ok) {
+      const data = await anRes.json();
+      setAnalytics(data);
     }
   }, []);
 
@@ -216,7 +227,8 @@ export default function AdminPage() {
     { id: "data",     label: `Data${batched.length ? ` (${batched.length})` : ""}` },
     { id: "ics",      label: "Import ICS" },
     { id: "reviews",  label: `Reviews${pendingReviews.length ? ` (${pendingReviews.length})` : ""}` },
-    { id: "settings", label: "Settings" },
+    { id: "settings",   label: "Settings" },
+    { id: "analytics",  label: "Analytics" },
   ];
 
   const S: Record<string, React.CSSProperties> = {
@@ -625,6 +637,107 @@ export default function AdminPage() {
                 ))}
               </div>
 
+            </div>
+          )}
+
+          {/* ── Analytics ── */}
+          {tab === "analytics" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {/* Vercel visitor analytics link */}
+              <div style={{
+                background: "rgba(126,200,227,0.04)", border: "1px solid rgba(126,200,227,0.15)",
+                borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(126,200,227,0.85)", marginBottom: 3 }}>Visitor Analytics</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+                    Page views, time on site, referrers, devices, countries — via Vercel
+                  </div>
+                </div>
+                <a
+                  href="https://vercel.com/chris-vinson-s-projects/iwc/analytics"
+                  target="_blank" rel="noopener"
+                  style={{
+                    background: "rgba(126,200,227,0.1)", border: "1px solid rgba(126,200,227,0.25)",
+                    borderRadius: 8, color: "rgba(126,200,227,0.9)", fontSize: 11, fontWeight: 700,
+                    padding: "8px 16px", textDecoration: "none", flexShrink: 0, letterSpacing: "0.04em",
+                  }}
+                >
+                  Open Dashboard →
+                </a>
+              </div>
+
+              {!analytics ? (
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>Loading…</p>
+              ) : (
+                <>
+                  {/* Summary cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
+                    {[
+                      { label: "Total Bookings", value: analytics.summary.totalBookings, sub: `${analytics.summary.bookings30d} last 30d` },
+                      { label: "Total Revenue", value: `$${analytics.summary.totalRevenue.toLocaleString()}`, sub: `$${analytics.summary.revenue30d.toLocaleString()} last 30d` },
+                      { label: "Avg Ticket", value: `$${analytics.summary.avgTicket}`, sub: `per booking` },
+                      { label: "Avg Windows", value: analytics.summary.avgWindows, sub: `per booking` },
+                      { label: "Last 7 Days", value: analytics.summary.bookings7d, sub: `bookings` },
+                      { label: "Revenue 7d", value: `$${analytics.summary.revenue7d}`, sub: `this week` },
+                    ].map(c => (
+                      <div key={c.label} style={{
+                        background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                        borderRadius: 10, padding: "14px 16px",
+                      }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 6 }}>{c.label}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#a78bfa" }}>{c.value}</div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>{c.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ZIP breakdown */}
+                  {analytics.byZip.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Bookings by ZIP</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {analytics.byZip.map(z => {
+                          const maxCount = analytics.byZip[0].count;
+                          return (
+                            <div key={z.zip} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.7)", width: 54, flexShrink: 0 }}>{z.zip}</span>
+                              <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: 4, height: 8, overflow: "hidden" }}>
+                                <div style={{ width: `${(z.count / maxCount) * 100}%`, height: "100%", background: "#a78bfa", borderRadius: 4, transition: "width 0.4s" }} />
+                              </div>
+                              <span style={{ fontSize: 11, color: "#a78bfa", width: 18, textAlign: "right", flexShrink: 0 }}>{z.count}</span>
+                              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", width: 54, textAlign: "right", flexShrink: 0 }}>${z.revenue.toLocaleString()}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Window count distribution */}
+                  {analytics.byWindowCount.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>Windows per Booking</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {analytics.byWindowCount.map(w => (
+                          <div key={w.windows} style={{
+                            background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)",
+                            borderRadius: 8, padding: "8px 14px", textAlign: "center",
+                          }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: "#a78bfa" }}>{w.windows}w</div>
+                            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>{w.count}×</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analytics.summary.totalBookings === 0 && (
+                    <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>No bookings yet — data will appear here once customers start booking.</p>
+                  )}
+                </>
+              )}
             </div>
           )}
 
