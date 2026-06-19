@@ -6,6 +6,7 @@ import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
 import { DARK, LIGHT, type Tokens } from "./theme";
 import type { ThemeMode, Skin } from "./types";
+import { AdminQuickAccess } from "./AdminQuickAccess";
 
 export interface PowerConsoleSkinProps {
   date: string; time: string; windowCount: number;
@@ -225,6 +226,8 @@ export function PowerConsoleSkin({
           {!date || !time ? "Select a time slot to continue" : "Enter your street address to continue"}
         </p>
       )}
+
+      <AdminQuickAccess />
     </div>
   );
 }

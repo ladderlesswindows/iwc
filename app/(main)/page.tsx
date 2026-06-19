@@ -80,6 +80,8 @@ export default function HomePage() {
           onDateChange={setSelectedDate}
           onTimeChange={setSelectedTime}
           slotMap={slotMap}
+          showSlideshow={reviewMode}
+          onBack={() => { setReviewMode(false); setPanelVisible(true); }}
         />
 
         {/* Floating NPC panel — slides in on GO! */}

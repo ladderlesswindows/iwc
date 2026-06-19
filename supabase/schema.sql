@@ -40,3 +40,22 @@ create policy "Anyone can read availability"
   on availability for select to anon using (true);
 create policy "Service role can do anything on availability"
   on availability for all to service_role using (true) with check (true);
+
+-- Post-job gig completions and customer review tokens
+create table if not exists gig_completions (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  booking_id uuid references bookings(id),
+  worker_notes text not null,
+  completed_at timestamptz default now(),
+  review_token text unique not null,
+  review_status text not null default 'pending', -- pending | approved | rejected
+  customer_phone text,
+  customer_review_text text,
+  customer_stars int,
+  review_submitted_at timestamptz
+);
+
+alter table gig_completions enable row level security;
+create policy "Service role can do anything on gig_completions"
+  on gig_completions for all to service_role using (true) with check (true);

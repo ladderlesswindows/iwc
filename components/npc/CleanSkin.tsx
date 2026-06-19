@@ -6,6 +6,7 @@ import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
 import { DARK, LIGHT, type Tokens } from "./theme";
 import type { SkinProps, Step } from "./types";
+import { AdminQuickAccess } from "./AdminQuickAccess";
 
 // ── Module-level step order and labels ───────────────────────────────
 const STEPS: Step[] = ["location", "timeslot", "windows", "contact", "complete"];
@@ -318,6 +319,8 @@ export function CleanSkin(props: SkinProps) {
       {STEPS.slice(currentIdx + 1).filter(s => s !== "complete").map(s => (
         <UpcomingRow key={s} T={T} label={STEP_LABELS[s]} />
       ))}
+
+      <AdminQuickAccess />
     </div>
   );
 }

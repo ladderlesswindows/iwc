@@ -12,6 +12,7 @@ import type { Step } from "@/components/npc/types";
 import { STEP_ORDER } from "@/components/npc/types";
 import { formatTime, formatDateFull, FALLBACK_DATE } from "@/lib/availability";
 import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
+import SlideshowHtml from "@/components/SlideshowHtml";
 
 interface Props {
   step: Step;
@@ -28,15 +29,20 @@ interface Props {
   onWindowCountChange?: (n: number) => void;
   onDateChange?: (d: string) => void;
   onTimeChange?: (t: string) => void;
+  showSlideshow?: boolean;
+  onBack?: () => void;
 }
 
-export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange }: Props) {
+export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange, showSlideshow, onBack }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const [mapLoaded, setMapLoaded]         = useState(false);
   const [hasFlown, setHasFlown]           = useState(false);
   const [overlaysVisible, setOverlaysVisible] = useState(false);
+  const [videoState, setVideoState]       = useState<"hidden" | "playing" | "dismissed">("hidden");
+  const CARD_W = 292;
+  const [centeredX, setCenteredX]         = useState(() => Math.max(16, (window.innerWidth - CARD_W) / 2));
   const onZipChangeRef = useRef(onZipChange);
   const onGoRef = useRef(onGo);
   const onOpenRef = useRef(onOpen);
@@ -77,6 +83,22 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
   const zip = selectedZip || DEFAULT_ZIP;
   const stepIdx = STEP_ORDER.indexOf(step);
   useEffect(() => { stepIdxRef.current = stepIdx; }, [stepIdx]);
+
+  // ── Keep centeredX in sync with viewport size ────────────────────────
+  useEffect(() => {
+    function measure() { setCenteredX(Math.max(16, (window.innerWidth - CARD_W) / 2)); }
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // ── Video box transitions ────────────────────────────────────────────
+  useEffect(() => {
+    if (stepIdx > 0) {
+      setVideoState(s => s === "playing" ? "dismissed" : s);
+    } else {
+      setVideoState(s => s === "dismissed" ? "hidden" : s);
+    }
+  }, [stepIdx]);
 
   // ── Auto-set window count to zip minimum when entering timeslot step ──
   useEffect(() => {
@@ -150,9 +172,12 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           setMapLoaded(true);
           setOverlaysVisible(true);
           markersRef.current.forEach(m => { m.getElement().style.display = "block"; });
-          // Clicking the map background (not the dots) opens the panel
+          // Clicking the map background (not the dots) opens the panel + shows video
           map.on("click", () => {
-            if (stepIdxRef.current === 0) onOpenRef.current?.();
+            if (stepIdxRef.current === 0) {
+              onOpenRef.current?.();
+              setVideoState(s => s === "hidden" ? "playing" : s);
+            }
           });
         }, 8800);
       });
@@ -213,11 +238,10 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
 
   const area = SERVICE_AREAS[zip];
 
-  // Determine which overlay to show
-  type Overlay = "none" | "calendar" | "photos" | "summary";
+  // Determine which marketing overlay to show in the map center
+  type Overlay = "none" | "photos" | "summary";
   let overlay: Overlay = "none";
-  if (stepIdx === 1) overlay = "calendar";
-  else if (stepIdx === 2) overlay = "photos";
+  if (stepIdx === 2) overlay = "photos";
   else if (stepIdx >= 3) overlay = "summary";
 
   return (
@@ -252,34 +276,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
         />
       </div>
 
-      {/* Confirmed location badge */}
-      <AnimatePresence>
-        {stepIdx > 0 && area && (
-          <motion.div
-            variants={{
-              hidden:  { opacity: 0, x: -60, scale: 0.85 },
-              visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } },
-              exit:    { opacity: 0, x: -30, transition: { duration: 0.25 } },
-            }}
-            initial="hidden" animate="visible" exit="exit"
-            style={{
-              position: "absolute", top: 14, left: 16,
-              background: "rgba(5,5,8,0.78)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              border: "1px solid rgba(126,200,227,0.16)",
-              borderRadius: 8, padding: "5px 12px",
-              color: "rgba(126,200,227,0.8)",
-              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-              textTransform: "uppercase", pointerEvents: "none",
-            }}
-          >
-            ▲ {area.name} · {zip}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Coverage alert — top-left below badge, appears after fly animation */}
+      {/* Coverage alert — top-left, appears after fly animation */}
       <AnimatePresence>
         {stepIdx > 0 && area?.alert && (
           <CoverageAlertCard key={zip} alert={area.alert} />
@@ -298,23 +295,102 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
         )}
       </AnimatePresence>
 
-      {/* Window counter — lower-left, visible from timeslot step onward */}
+      {/* Combined calendar + window counter — slides from center to left when marketing item appears */}
       <AnimatePresence>
         {stepIdx >= 1 && (
-          <MapWindowCounter
-            key="win-counter"
-            count={windowCount}
-            minWindows={SERVICE_AREAS[zip]?.minWindows ?? 1}
-            onChange={n => onWindowCountChange?.(n)}
-          />
+          <motion.div
+            key="book-card"
+            initial={{ opacity: 0, x: centeredX, y: "-50%", scale: 0.93 }}
+            animate={{
+              opacity: 1, scale: 1,
+              x: stepIdx >= 2 ? 16 : centeredX,
+              y: "-50%",
+            }}
+            exit={{ opacity: 0, scale: 0.94, x: centeredX, y: "-50%" }}
+            transition={{
+              x: { type: "spring", stiffness: 260, damping: 32 },
+              opacity: { duration: 0.3 },
+              scale: { duration: 0.3 },
+            }}
+            style={{ position: "absolute", left: 0, top: "50%", zIndex: 8 }}
+          >
+            <MapBookingCard
+              date={date} time={time} slotMap={slotMap}
+              onDateChange={onDateChange} onTimeChange={onTimeChange}
+              windowCount={windowCount}
+              minWindows={SERVICE_AREAS[zip]?.minWindows ?? 1}
+              onWindowCountChange={n => onWindowCountChange?.(n)}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Dynamic overlay */}
-      <AnimatePresence mode="wait">
-        {overlay === "calendar" && (
-          <CalendarOverlay key="cal" date={date} time={time} slotMap={slotMap} onDateChange={onDateChange} onTimeChange={onTimeChange} />
+      {/* Slideshow — top-center at coverage-alert level */}
+      <AnimatePresence>
+        {(stepIdx >= 3 || showSlideshow) && (
+          <div key="slideshow-wrap" style={{
+            position: "absolute", top: 54, left: "50%", transform: "translateX(-50%)",
+            width: "min(380px, 72%)", zIndex: 9, pointerEvents: "auto",
+          }}>
+            <SlideshowHtml />
+          </div>
         )}
+      </AnimatePresence>
+
+      {/* Video box — looping intro clip, bottom-left, on first map click */}
+      <AnimatePresence>
+        {videoState === "playing" && (
+          <motion.div
+            key="video-box"
+            initial={{ opacity: 0, y: 20, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.94 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              position: "absolute", top: 16, left: 16, zIndex: 10,
+              width: 240, borderRadius: 12, overflow: "hidden",
+              border: "1px solid rgba(126,200,227,0.22)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.55)",
+              pointerEvents: "none",
+            }}
+          >
+            <video
+              src="/videos/demo.mp4"
+              autoPlay loop muted playsInline
+              style={{ width: "100%", display: "block" }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Back button — replaces video after step progresses */}
+      <AnimatePresence>
+        {videoState === "dismissed" && (
+          <motion.button
+            key="back-btn"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.35 }}
+            onClick={onBack}
+            style={{
+              position: "absolute", top: 16, left: 16, zIndex: 10,
+              background: "rgba(5,5,8,0.82)",
+              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(126,200,227,0.22)",
+              borderRadius: 10, padding: "8px 14px",
+              color: "rgba(126,200,227,0.85)",
+              fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+              cursor: "pointer", pointerEvents: "auto", fontFamily: "inherit",
+            }}
+          >
+            ← Back
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Marketing overlays — photos and summary in map center */}
+      <AnimatePresence mode="wait">
         {overlay === "photos" && (
           <PhotosOverlay key="photos" windowCount={windowCount} />
         )}
@@ -426,28 +502,7 @@ function CalendarOverlay({
   const timeSlots = date ? (slotMap[date] ?? []) : [];
 
   return (
-    <motion.div
-      variants={{
-        hidden:  { opacity: 0, y: -130, scale: 0.72 },
-        visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 1.3, delay: 0.9, ease: [0.34, 1.56, 0.64, 1] } },
-        exit:    { opacity: 0, scale: 0.88, y: 16, transition: { duration: 0.25 } },
-      }}
-      initial="hidden" animate="visible" exit="exit"
-      style={{
-        position: "absolute", inset: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        pointerEvents: "none",
-      }}
-    >
-      <div style={{
-        background: "rgba(5,5,8,0.88)",
-        backdropFilter: "blur(22px)",
-        WebkitBackdropFilter: "blur(22px)",
-        border: `1px solid ${TEAL}0.14)`,
-        borderRadius: 18, padding: "16px 18px 14px",
-        boxShadow: "0 10px 48px rgba(0,0,0,0.6)",
-        width: 292, pointerEvents: "auto",
-      }}>
+    <div style={{ padding: "16px 18px 14px" }}>
 
         {/* ── Header: nav + title + view toggle ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -565,21 +620,86 @@ function CalendarOverlay({
             ⊙ {formatTime(time)}
           </div>
         )}
+    </div>
+  );
+}
+
+// ── Booking Card (Calendar + Window Counter combined) ─────────────────
+
+function MapBookingCard({
+  date, time, slotMap, onDateChange, onTimeChange,
+  windowCount, minWindows, onWindowCountChange,
+}: {
+  date: string; time: string; slotMap: Record<string, string[]>;
+  onDateChange?: (d: string) => void; onTimeChange?: (t: string) => void;
+  windowCount: number; minWindows: number;
+  onWindowCountChange?: (n: number) => void;
+}) {
+  const TEAL = "rgba(126,200,227,";
+  const atMin = windowCount <= minWindows;
+  const atMax = windowCount >= MAX_WINDOWS;
+  const btnBase: React.CSSProperties = {
+    width: 26, height: 26, borderRadius: "50%",
+    background: `${TEAL}0.1)`, border: `1px solid ${TEAL}0.25)`,
+    color: `${TEAL}0.85)`, fontSize: 16, fontWeight: 700,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    transition: "all 0.12s", flexShrink: 0,
+  };
+  return (
+    <div style={{
+      background: "rgba(5,5,8,0.88)",
+      backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
+      border: `1px solid ${TEAL}0.14)`,
+      borderRadius: 18,
+      boxShadow: "0 10px 48px rgba(0,0,0,0.6)",
+      width: 292, overflow: "hidden",
+    }}>
+      {/* Calendar section */}
+      <CalendarOverlay
+        date={date} time={time} slotMap={slotMap}
+        onDateChange={onDateChange} onTimeChange={onTimeChange}
+      />
+      {/* Divider */}
+      <div style={{ height: 1, background: `${TEAL}0.1)`, marginInline: "18px" }} />
+      {/* Window counter section */}
+      <div style={{ padding: "10px 18px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" as const, color: `${TEAL}0.45)`, marginRight: 4 }}>
+          Windows
+        </span>
+        <button
+          onClick={() => onWindowCountChange?.(Math.max(minWindows, windowCount - 1))}
+          style={{ ...btnBase, cursor: atMin ? "not-allowed" : "pointer", opacity: atMin ? 0.3 : 1 }}
+        >−</button>
+        <span style={{ fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.9)", minWidth: 22, textAlign: "center" as const }}>
+          {windowCount}
+        </span>
+        <button
+          onClick={() => onWindowCountChange?.(Math.min(MAX_WINDOWS, windowCount + 1))}
+          style={{ ...btnBase, cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.3 : 1 }}
+        >+</button>
+        <span style={{ fontSize: 12, fontWeight: 700, color: `${TEAL}0.72)`, marginLeft: "auto" }}>
+          ${windowCount * PRICE_PER_WINDOW}
+        </span>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 // ── Photos Overlay ────────────────────────────────────────────────────
 
-const PHOTO_CARDS = [
-  { label: "Crystal clear results",   grad: "rgba(126,200,227,0.18)", icon: "✦" },
-  { label: "Streak-free guarantee",   grad: "rgba(167,139,250,0.18)", icon: "◈" },
-  { label: "Inside & outside",        grad: "rgba(200,210,130,0.14)", icon: "⬡" },
-  { label: "Any height, ladderless",  grad: "rgba(130,200,190,0.16)", icon: "▲" },
-];
+// Real example photos keyed by window-count (1–4+).
+// 2c and 3d don't exist in the set, so we fill the 4th slot with the first photo.
+const EXAMPLE_SETS: Record<number, string[]> = {
+  1: ["1a","1b","1c","1d"],
+  2: ["2a","2b","2d","2a"],
+  3: ["3a","3b","3c","3a"],
+  4: ["4a","4b","4c","4d"],
+};
 
 function PhotosOverlay({ windowCount }: { windowCount: number }) {
+  const set    = Math.min(4, Math.max(1, windowCount));
+  const photos = EXAMPLE_SETS[set] ?? EXAMPLE_SETS[4];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -594,29 +714,28 @@ function PhotosOverlay({ windowCount }: { windowCount: number }) {
       }}
     >
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 2 }}>
-        What we deliver
+        What counts as {set} window{set !== 1 ? "s" : ""}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "100%", maxWidth: 380 }}>
-        {PHOTO_CARDS.map((card, i) => (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%", maxWidth: 380 }}>
+        {photos.map((suffix, i) => (
           <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.08 }}
+            key={`${set}-${i}`}
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.32, delay: i * 0.07 }}
             style={{
-              background: card.grad,
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 14, padding: "20px 14px",
-              textAlign: "center",
+              borderRadius: 11, overflow: "hidden",
+              border: "1px solid rgba(255,255,255,0.1)",
+              aspectRatio: "4/3",
             }}
           >
-            <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.65 }}>{card.icon}</div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.68)", lineHeight: 1.35 }}>
-              {card.label}
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/examples/example${suffix}.jpg`}
+              alt={`${set}-window example`}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
           </motion.div>
         ))}
       </div>

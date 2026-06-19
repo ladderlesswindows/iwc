@@ -5,6 +5,7 @@ import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } fro
 import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { SkinProps } from "./types";
+import { AdminQuickAccess } from "./AdminQuickAccess";
 
 // ── FF Palette ────────────────────────────────────────────────────
 const C = {
@@ -314,6 +315,7 @@ export function GameSkin(props: SkinProps) {
           )}
           {renderQuestLog()}
         </>)}
+      <AdminQuickAccess />
       </div>
     </div>
   );

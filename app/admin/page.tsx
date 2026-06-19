@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { AdminCalendar } from "@/components/admin/AdminCalendar";
 import { ICSUploader } from "@/components/admin/ICSUploader";
@@ -12,10 +13,26 @@ import type { Booking, BlockedSlot } from "@/app/admin/types";
 const SESSION_KEY = "iwc_admin";
 const PW_KEY = "iwc_admin_pw";
 
-type Tab = "calendar" | "bookings" | "data" | "ics";
+type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews";
+
+interface GigCompletion {
+  id: string;
+  created_at: string;
+  booking_id: string;
+  worker_notes: string;
+  completed_at: string;
+  review_token: string;
+  review_status: "pending" | "approved" | "rejected";
+  customer_review_text: string | null;
+  customer_stars: number | null;
+  review_submitted_at: string | null;
+  bookings: { first_name: string | null; last_name: string | null; service_date: string; phone: string | null } | null;
+}
 
 
 export default function AdminPage() {
+  const router = useRouter();
+
   const [loggedIn, setLoggedIn] = useState(false);
   const [role, setRole]         = useState<"owner" | "staff">("owner");
   const [pw, setPw]             = useState("");
@@ -26,13 +43,14 @@ export default function AdminPage() {
   const [blocked, setBlocked]   = useState<BlockedSlot[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batching, setBatching] = useState(false);
+  const [completions, setCompletions] = useState<GigCompletion[]>([]);
+  const [approving, setApproving]     = useState<string | null>(null);
 
   const pending = bookings.filter(b => b.status === "pending");
   const batched = bookings.filter(b => b.status === "batched");
 
   const loadData = useCallback(async (password: string) => {
     const h = adminHeader(password);
-    // Try API routes (service client bypasses RLS); fall back to anon for staff
     const bRes = await fetch("/api/admin/bookings", { headers: h });
     if (bRes.ok) {
       const { bookings: data } = await bRes.json();
@@ -49,7 +67,23 @@ export default function AdminPage() {
       const { data } = await supabase.from("availability").select("*").eq("is_blocked", true);
       if (data) setBlocked(data as BlockedSlot[]);
     }
+    const rRes = await fetch("/api/admin/reviews", { headers: h });
+    if (rRes.ok) {
+      const { completions: data } = await rRes.json();
+      if (data) setCompletions(data as GigCompletion[]);
+    }
   }, []);
+
+  async function handleReviewStatus(id: string, status: "approved" | "rejected") {
+    setApproving(id);
+    await fetch("/api/admin/reviews", {
+      method: "PATCH",
+      headers: adminHeader(pw),
+      body: JSON.stringify({ id, review_status: status }),
+    });
+    await loadData(pw);
+    setApproving(null);
+  }
 
   useEffect(() => {
     const stored = sessionStorage.getItem(SESSION_KEY);
@@ -64,20 +98,20 @@ export default function AdminPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    const entered = pw.trim().toLowerCase();
-    if (entered === "staff") {
+    const trimmed = pw.trim();
+    if (trimmed.toLowerCase() === "staff") {
       sessionStorage.setItem(SESSION_KEY, "staff");
-      setRole("staff"); setLoggedIn(true); loadData(entered);
+      setRole("staff"); setLoggedIn(true); loadData(trimmed);
       return;
     }
     const res = await fetch("/api/admin/auth", {
       method: "POST",
-      headers: adminHeader(entered),
+      headers: adminHeader(trimmed),
     });
     if (res.ok) {
       sessionStorage.setItem(SESSION_KEY, "owner");
-      sessionStorage.setItem(PW_KEY, entered);
-      setRole("owner"); setLoggedIn(true); loadData(entered);
+      sessionStorage.setItem(PW_KEY, trimmed);
+      setRole("owner"); setLoggedIn(true); loadData(trimmed);
     } else {
       setPwError(true);
     }
@@ -159,11 +193,14 @@ export default function AdminPage() {
     );
   }
 
+  const pendingReviews = completions.filter(c => c.review_status === "pending" && c.review_submitted_at);
+
   const TABS: { id: Tab; label: string }[] = [
     { id: "calendar", label: "Calendar" },
     { id: "bookings", label: `Bookings${pending.length ? ` (${pending.length})` : ""}` },
     { id: "data",     label: `Data${batched.length ? ` (${batched.length})` : ""}` },
     { id: "ics",      label: "Import ICS" },
+    { id: "reviews",  label: `Reviews${pendingReviews.length ? ` (${pendingReviews.length})` : ""}` },
   ];
 
   const S: Record<string, React.CSSProperties> = {
@@ -180,7 +217,19 @@ export default function AdminPage() {
             {pending.length} pending · {batched.length} batched
           </p>
         </div>
-        <button className="ghost-btn" onClick={handleLogout}>Sign out</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={() => router.push("/admin/worker")}
+            style={{
+              background: "rgba(126,200,227,0.1)", border: "1px solid rgba(126,200,227,0.25)",
+              borderRadius: 8, color: "rgba(126,200,227,0.8)", fontSize: 11, fontWeight: 700,
+              padding: "6px 14px", cursor: "pointer", letterSpacing: "0.04em",
+            }}
+          >
+            Worker App
+          </button>
+          <button className="ghost-btn" onClick={handleLogout}>Sign out</button>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-6">
@@ -324,6 +373,97 @@ export default function AdminPage() {
           {/* ── ICS Import ── */}
           {tab === "ics" && (
             <ICSUploader onRefresh={() => loadData(pw)} adminPw={pw} />
+          )}
+
+          {/* ── Reviews ── */}
+          {tab === "reviews" && (
+            <div>
+              {completions.length === 0 && (
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>No gig completions yet.</p>
+              )}
+              {completions.map(c => {
+                const name = [c.bookings?.first_name, c.bookings?.last_name].filter(Boolean).join(" ");
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ladderlesswindows.com";
+                const reviewUrl = `${siteUrl}/review/${c.review_token}`;
+                const statusColor =
+                  c.review_status === "approved" ? "rgba(126,200,227,0.7)" :
+                  c.review_status === "rejected" ? "rgba(251,113,133,0.6)" :
+                  "rgba(255,255,255,0.3)";
+                return (
+                  <div key={c.id} style={{
+                    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 12, padding: "14px 16px", marginBottom: 10,
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 13, color: "white", fontWeight: 600 }}>{name || "Unknown customer"}</div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>
+                          {c.bookings?.service_date ? formatDateFull(c.bookings.service_date) : "–"}
+                          {" · "}completed {new Date(c.completed_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: statusColor }}>
+                        {c.review_status}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>
+                      <span style={{ color: "rgba(255,255,255,0.25)", marginRight: 6 }}>Worker:</span>
+                      {c.worker_notes}
+                    </div>
+
+                    {c.customer_review_text && (
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 6, padding: "8px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 6 }}>
+                        <span style={{ color: "rgba(255,255,255,0.25)", marginRight: 6 }}>Customer:</span>
+                        {c.customer_stars ? "★".repeat(c.customer_stars) + " · " : ""}{c.customer_review_text}
+                      </div>
+                    )}
+                    {!c.customer_review_text && (
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginBottom: 6 }}>
+                        Customer hasn't submitted yet · <a
+                          href={reviewUrl} target="_blank" rel="noopener"
+                          style={{ color: "rgba(126,200,227,0.5)", textDecoration: "none" }}
+                        >{reviewUrl.replace("https://", "")}</a>
+                      </div>
+                    )}
+
+                    {c.review_status === "pending" && c.customer_review_text && (
+                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                        <button
+                          onClick={() => handleReviewStatus(c.id, "approved")}
+                          disabled={approving === c.id}
+                          style={{
+                            background: "rgba(126,200,227,0.15)", border: "1px solid rgba(126,200,227,0.3)",
+                            borderRadius: 7, color: "rgba(126,200,227,0.9)", fontSize: 11, fontWeight: 700,
+                            padding: "6px 14px", cursor: approving === c.id ? "not-allowed" : "pointer",
+                            opacity: approving === c.id ? 0.5 : 1,
+                          }}
+                        >
+                          {approving === c.id ? "…" : "Approve"}
+                        </button>
+                        <button
+                          onClick={() => handleReviewStatus(c.id, "rejected")}
+                          disabled={approving === c.id}
+                          style={{
+                            background: "transparent", border: "1px solid rgba(251,113,133,0.3)",
+                            borderRadius: 7, color: "rgba(251,113,133,0.6)", fontSize: 11, fontWeight: 700,
+                            padding: "6px 14px", cursor: approving === c.id ? "not-allowed" : "pointer",
+                            opacity: approving === c.id ? 0.5 : 1,
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                    {c.review_status === "approved" && (
+                      <div style={{ fontSize: 10, color: "rgba(126,200,227,0.5)", marginTop: 8 }}>
+                        ✓ Approved — customer can now post to Google via their link
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
 
         </motion.div>
