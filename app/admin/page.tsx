@@ -146,7 +146,7 @@ export default function AdminPage() {
   function handleLogout() {
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(PW_KEY);
-    setLoggedIn(false); setRole("owner"); setPw("");
+    router.push("/commercial");
   }
 
   function toggleSelect(id: string) {
