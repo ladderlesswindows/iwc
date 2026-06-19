@@ -8,8 +8,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { MobileView } from "@/components/MobileView";
 import { motion, AnimatePresence } from "framer-motion";
 import { FALLBACK_DATE, FALLBACK_TIME, formatDate, formatTime, getAvailableSlots } from "@/lib/availability";
-import { PRICE_PER_WINDOW } from "@/lib/constants";
-import { DEFAULT_ZIP } from "@/lib/serviceAreas";
+import { calcPrice } from "@/lib/constants";
+import { DEFAULT_ZIP, SERVICE_AREAS } from "@/lib/serviceAreas";
 import type { Step } from "@/components/npc/types";
 
 // MapPanel uses Mapbox GL — must not SSR
@@ -31,9 +31,17 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
 
+  const [promoCode, setPromoCode]       = useState("");
+  const [promoEnabled, setPromoEnabled] = useState(false);
+
   // ── Slot availability (fetched once, passed to both desktop NPC and mobile) ──
   const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
   useEffect(() => { getAvailableSlots().then(setSlotMap); }, []);
+  useEffect(() => {
+    fetch("/api/settings").then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.promo_enabled) setPromoEnabled(true);
+    }).catch(() => {});
+  }, []);
 
   // ── NPC state ─────────────────────────────────────────────────
   const [npcPaused, setNpcPaused] = useState(false);
@@ -53,6 +61,7 @@ export default function HomePage() {
     return new URLSearchParams({
       date: selectedDate, time: selectedTime,
       windows: String(windowCount),
+      zip: selectedZip,
       address, firstName, lastName, phone, email, notes,
       needsEstimate: String(needsEstimate),
       estimateDeadline,
@@ -81,6 +90,9 @@ export default function HomePage() {
           onTimeChange={setSelectedTime}
           slotMap={slotMap}
           showSlideshow={reviewMode}
+          promoCode={promoCode}
+          onPromoCodeChange={setPromoCode}
+          promoEnabled={promoEnabled}
         />
 
         {/* Floating NPC panel — slides in on GO! */}
@@ -182,7 +194,7 @@ export default function HomePage() {
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.82)" }}>
                   <span style={{ color: "rgba(126,200,227,0.5)", marginRight: 10 }}>🪟</span>
                   {windowCount} window{windowCount !== 1 ? "s" : ""} ·{" "}
-                  <span style={{ color: "rgba(126,200,227,0.85)", fontWeight: 700 }}>${windowCount * PRICE_PER_WINDOW}</span>
+                  <span style={{ color: "rgba(126,200,227,0.85)", fontWeight: 700 }}>${calcPrice(windowCount, SERVICE_AREAS[selectedZip]?.minWindows ?? 1)}</span>
                 </div>
                 {address.trim() && !/^Santa Cruz/.test(address) && (
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>

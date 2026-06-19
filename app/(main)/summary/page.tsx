@@ -6,7 +6,8 @@ import { motion } from "framer-motion";
 import { Check, ChevronLeft } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { formatDate, formatTime, formatPhone } from "@/lib/availability";
-import { PRICE_PER_WINDOW } from "@/lib/constants";
+import { calcPrice } from "@/lib/constants";
+import { SERVICE_AREAS } from "@/lib/serviceAreas";
 
 function SummaryContent() {
   const router = useRouter();
@@ -23,7 +24,9 @@ function SummaryContent() {
   const notes = params.get("notes") ?? "";
   const needsEstimate = params.get("needsEstimate") === "true";
   const estimateDeadline = params.get("estimateDeadline") ?? "";
-  const total = windows * PRICE_PER_WINDOW;
+  const zip = params.get("zip") ?? "95060";
+  const minWindows = SERVICE_AREAS[zip]?.minWindows ?? 1;
+  const total = calcPrice(windows, minWindows);
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -120,7 +123,7 @@ function SummaryContent() {
         >
           <Row label="Date" value={formatDate(date)} />
           <Row label="Time" value={formatTime(time)} />
-          <Row label="Windows" value={`${windows} (@ $${PRICE_PER_WINDOW} each)`} />
+          <Row label="Windows" value={`${windows} — $${total}`} />
           <Row label="Address" value={address} />
           {(firstName || lastName) && <Row label="Name" value={`${firstName} ${lastName}`.trim()} />}
           {phone && <Row label="Phone" value={formatPhone(phone)} />}

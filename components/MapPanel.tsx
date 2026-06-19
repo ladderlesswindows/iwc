@@ -11,7 +11,7 @@ import type { CoverageAlert } from "@/lib/serviceAreas";
 import type { Step } from "@/components/npc/types";
 import { STEP_ORDER } from "@/components/npc/types";
 import { formatTime, formatDateFull, FALLBACK_DATE } from "@/lib/availability";
-import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
+import { calcPrice, MAX_WINDOWS } from "@/lib/constants";
 import SlideshowHtml from "@/components/SlideshowHtml";
 
 // ── Shared design tokens ──────────────────────────────────────────────────
@@ -53,9 +53,12 @@ interface Props {
   onDateChange?: (d: string) => void;
   onTimeChange?: (t: string) => void;
   showSlideshow?: boolean;
+  promoCode?: string;
+  onPromoCodeChange?: (c: string) => void;
+  promoEnabled?: boolean;
 }
 
-export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange, showSlideshow }: Props) {
+export default function MapPanel({ step, selectedZip, date, time, windowCount, needsEstimate, slotMap, onZipChange, onGo, onOpen, address, onWindowCountChange, onDateChange, onTimeChange, showSlideshow, promoCode, onPromoCodeChange, promoEnabled }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -164,19 +167,24 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
       const map = new mapboxgl.Map({
         container: containerRef.current!,
         style: "mapbox://styles/mapbox/satellite-v9",
-        // Start at Davenport coastal bluffs looking SE along the coast toward Santa Cruz
-        center: [-122.1853, 37.0042],
-        zoom: 12.5,
-        pitch: 65,
-        bearing: 335,
+        // Still overhead — intentionally looks like a photo to invite first click
+        center: INITIAL_CAMERA.center,
+        zoom: INITIAL_CAMERA.zoom,
+        pitch: INITIAL_CAMERA.pitch,
+        bearing: INITIAL_CAMERA.bearing,
         interactive: false,
         attributionControl: false,
       });
 
+      // SAVED — Davenport coastal intro (start position + flyTo) — restore if desired:
+      // center: [-122.1853, 37.0042], zoom: 12.5, pitch: 65, bearing: 335
+      // map.flyTo({ center: INITIAL_CAMERA.center, zoom: INITIAL_CAMERA.zoom,
+      //   pitch: 0, bearing: 0, duration: 8500, curve: 1.4, essential: true });
+
       map.on("load", () => {
         if (cancelled) return;
 
-        // Pulsing service area markers — hidden until intro lands
+        // Pulsing service area markers
         Object.values(SERVICE_AREAS).forEach((area) => {
           const el = document.createElement("div");
           el.style.cssText = [
@@ -185,7 +193,6 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
             "box-shadow:0 0 0 0 rgba(126,200,227,0.45);",
             "animation:mapPulse 2.4s ease-out infinite;",
             "cursor:pointer;",
-            "display:none;",
           ].join("");
           el.addEventListener("click", () => {
             onZipChangeRef.current?.(area.zip);
@@ -197,28 +204,12 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           markersRef.current.push(marker);
         });
 
-        // Intro fly: Davenport coast → Santa Cruz county overview
-        map.flyTo({
-          center:   INITIAL_CAMERA.center,
-          zoom:     INITIAL_CAMERA.zoom,
-          pitch:    0,
-          bearing:  0,
-          duration: 8500,
-          curve:    1.4,
-          essential: true,
+        setMapLoaded(true);
+        setOverlaysVisible(true);
+        // Clicking the map background (not the dots) opens the panel
+        map.on("click", () => {
+          if (stepIdxRef.current === 0) onOpenRef.current?.();
         });
-
-        // Unlock step-change logic and overlays after intro lands
-        setTimeout(() => {
-          if (cancelled) return;
-          setMapLoaded(true);
-          setOverlaysVisible(true);
-          markersRef.current.forEach(m => { m.getElement().style.display = "block"; });
-          // Clicking the map background (not the dots) opens the panel
-          map.on("click", () => {
-            if (stepIdxRef.current === 0) onOpenRef.current?.();
-          });
-        }, 8800);
       });
 
       mapRef.current = map;
@@ -359,6 +350,9 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
               windowCount={windowCount}
               minWindows={SERVICE_AREAS[zip]?.minWindows ?? 1}
               onWindowCountChange={n => onWindowCountChange?.(n)}
+              promoCode={promoCode}
+              onPromoCodeChange={onPromoCodeChange}
+              promoEnabled={promoEnabled}
             />
           </motion.div>
         )}
@@ -416,7 +410,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
       {/* Marketing overlays — photos and summary in map center */}
       <AnimatePresence mode="wait">
         {overlay === "photos" && (
-          <PhotosOverlay key="photos" windowCount={windowCount} />
+          <PhotosOverlay key="photos" windowCount={windowCount} minWindows={SERVICE_AREAS[zip]?.minWindows ?? 1} />
         )}
         {overlay === "summary" && (
           <SummaryOverlay
@@ -652,14 +646,19 @@ function CalendarOverlay({
 function MapBookingCard({
   date, time, slotMap, onDateChange, onTimeChange,
   windowCount, minWindows, onWindowCountChange,
+  promoCode, onPromoCodeChange, promoEnabled,
 }: {
   date: string; time: string; slotMap: Record<string, string[]>;
   onDateChange?: (d: string) => void; onTimeChange?: (t: string) => void;
   windowCount: number; minWindows: number;
   onWindowCountChange?: (n: number) => void;
+  promoCode?: string;
+  onPromoCodeChange?: (c: string) => void;
+  promoEnabled?: boolean;
 }) {
   const atMin = windowCount <= minWindows;
   const atMax = windowCount >= MAX_WINDOWS;
+  const showPromo = promoEnabled && windowCount > minWindows;
   const btnBase: React.CSSProperties = {
     width: 26, height: 26, borderRadius: "50%",
     background: `${TEAL}0.1)`, border: `1px solid ${TEAL}0.25)`,
@@ -689,9 +688,38 @@ function MapBookingCard({
           style={{ ...btnBase, cursor: atMax ? "not-allowed" : "pointer", opacity: atMax ? 0.3 : 1 }}
         >+</button>
         <span style={{ fontSize: 12, fontWeight: 700, color: `${TEAL}0.72)`, marginLeft: "auto" }}>
-          ${windowCount * PRICE_PER_WINDOW}
+          ${calcPrice(windowCount, minWindows)}
         </span>
       </div>
+
+      {/* Promo code box — slides in when count exceeds minimum */}
+      {showPromo && (
+        <div style={{ padding: "0 18px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+          <input
+            type="text"
+            placeholder="Promo code"
+            value={promoCode ?? ""}
+            onChange={e => onPromoCodeChange?.(e.target.value.toUpperCase())}
+            style={{
+              background: `${TEAL}0.06)`,
+              border: `1px solid ${TEAL}0.22)`,
+              borderRadius: 8,
+              color: "rgba(255,255,255,0.85)",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              padding: "6px 10px",
+              outline: "none",
+              width: "100%",
+              fontFamily: "inherit",
+            }}
+          />
+          <span style={{ fontSize: 9, color: `${TEAL}0.5)`, letterSpacing: "0.06em" }}>
+            Have a code? You may qualify for a discount.
+          </span>
+        </div>
+      )}
+
       {/* Divider */}
       <div style={{ height: 1, background: `${TEAL}0.1)`, marginInline: "18px" }} />
       {/* Calendar section */}
@@ -714,7 +742,7 @@ const EXAMPLE_SETS: Record<number, string[]> = {
   4: ["4a","4b","4c","4d"],
 };
 
-function PhotosOverlay({ windowCount }: { windowCount: number }) {
+function PhotosOverlay({ windowCount, minWindows }: { windowCount: number; minWindows: number }) {
   const set    = Math.min(4, Math.max(1, windowCount));
   const photos = EXAMPLE_SETS[set] ?? EXAMPLE_SETS[4];
 
@@ -764,7 +792,7 @@ function PhotosOverlay({ windowCount }: { windowCount: number }) {
         </div>
 
         <div style={{ fontSize: 15, fontWeight: 700, color: `${TEAL}0.85)` }}>
-          {windowCount} window{windowCount !== 1 ? "s" : ""} · ${windowCount * PRICE_PER_WINDOW}
+          {windowCount} window{windowCount !== 1 ? "s" : ""} · ${calcPrice(windowCount, minWindows)}
         </div>
       </div>
     </motion.div>
@@ -782,7 +810,7 @@ function SummaryOverlay({ date, time, windowCount, needsEstimate, zip, step }: {
     { label: "Location", value: area ? `${area.name}, CA ${zip}` : zip },
     { label: "Date",     value: date ? formatDateFull(date) : "July 4, 2026" },
     { label: "Time",     value: time ? formatTime(time)    : "2:50 PM" },
-    { label: "Windows",  value: `${windowCount} — $${windowCount * PRICE_PER_WINDOW}` },
+    { label: "Windows",  value: `${windowCount} — $${calcPrice(windowCount, area?.minWindows ?? 1)}` },
     ...(step === "complete"
       ? [{ label: "Service", value: needsEstimate ? "Full estimate" : "Windows only" }]
       : []),

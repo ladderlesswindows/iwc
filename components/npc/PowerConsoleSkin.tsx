@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { formatDate, formatTime, getNextDays } from "@/lib/availability";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
-import { PRICE_PER_WINDOW, MAX_WINDOWS } from "@/lib/constants";
+import { calcPrice, MAX_WINDOWS } from "@/lib/constants";
 import { DARK, LIGHT, type Tokens } from "./theme";
 import type { ThemeMode, Skin } from "./types";
 import { AdminQuickAccess } from "./AdminQuickAccess";
@@ -44,7 +44,7 @@ export function PowerConsoleSkin({
   const zip        = selectedZip ?? DEFAULT_ZIP;
   const area       = SERVICE_AREAS[zip];
   const minWindows = area?.minWindows ?? 1;
-  const total      = windowCount * PRICE_PER_WINDOW;
+  const total      = calcPrice(windowCount, minWindows);
 
   const [showSlots, setShowSlots] = useState(false);
   const [street, setStreet]       = useState("");

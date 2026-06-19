@@ -13,7 +13,7 @@ import type { Booking, BlockedSlot } from "@/app/admin/types";
 const SESSION_KEY = "iwc_admin";
 const PW_KEY = "iwc_admin_pw";
 
-type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews";
+type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "settings";
 
 interface GigCompletion {
   id: string;
@@ -45,6 +45,7 @@ export default function AdminPage() {
   const [batching, setBatching] = useState(false);
   const [completions, setCompletions] = useState<GigCompletion[]>([]);
   const [approving, setApproving]     = useState<string | null>(null);
+  const [promoEnabled, setPromoEnabled] = useState(false);
 
   const pending = bookings.filter(b => b.status === "pending");
   const batched = bookings.filter(b => b.status === "batched");
@@ -71,6 +72,11 @@ export default function AdminPage() {
     if (rRes.ok) {
       const { completions: data } = await rRes.json();
       if (data) setCompletions(data as GigCompletion[]);
+    }
+    const sRes = await fetch("/api/admin/settings", { headers: h });
+    if (sRes.ok) {
+      const data = await sRes.json();
+      setPromoEnabled(data.promo_enabled === "true");
     }
   }, []);
 
@@ -201,6 +207,7 @@ export default function AdminPage() {
     { id: "data",     label: `Data${batched.length ? ` (${batched.length})` : ""}` },
     { id: "ics",      label: "Import ICS" },
     { id: "reviews",  label: `Reviews${pendingReviews.length ? ` (${pendingReviews.length})` : ""}` },
+    { id: "settings", label: "Settings" },
   ];
 
   const S: Record<string, React.CSSProperties> = {
@@ -463,6 +470,52 @@ export default function AdminPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Settings ── */}
+          {tab === "settings" && (
+            <div style={{ padding: "8px 0" }}>
+              <div style={{ marginBottom: 20, fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Site Settings
+              </div>
+              <div style={{
+                background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 12, padding: "18px 20px",
+                display: "flex", alignItems: "center", gap: 16,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>
+                    Promo Code Box
+                  </div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                    {promoEnabled
+                      ? "Customers see the promo code field when they select more than the minimum windows"
+                      : "Promo code field is hidden from customers"}
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    const next = !promoEnabled;
+                    setPromoEnabled(next);
+                    const stored = localStorage.getItem(PW_KEY) ?? "";
+                    await fetch("/api/admin/settings", {
+                      method: "PATCH",
+                      headers: { ...adminHeader(stored), "Content-Type": "application/json" },
+                      body: JSON.stringify({ promo_enabled: String(next) }),
+                    });
+                  }}
+                  style={{
+                    padding: "8px 20px", borderRadius: 9, fontSize: 13, fontWeight: 700,
+                    background: promoEnabled ? "#a78bfa" : "rgba(167,139,250,0.1)",
+                    color: promoEnabled ? "#08080e" : "#a78bfa",
+                    border: `1px solid ${promoEnabled ? "#a78bfa" : "rgba(167,139,250,0.25)"}`,
+                    cursor: "pointer", transition: "all 0.15s", flexShrink: 0,
+                  }}
+                >
+                  {promoEnabled ? "Enabled" : "Disabled"}
+                </button>
+              </div>
             </div>
           )}
 

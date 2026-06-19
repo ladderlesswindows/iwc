@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
-import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
+import { calcPrice, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
 import { DARK, LIGHT, type Tokens } from "./theme";
 import type { SkinProps, Step } from "./types";
 import { AdminQuickAccess } from "./AdminQuickAccess";
@@ -72,15 +72,15 @@ function CardLabel({ T, text }: { T: Tokens; text: string }) {
   );
 }
 
-function Counter({ T, count, onChange }: { T: Tokens; count: number; onChange: (n: number) => void }) {
+function Counter({ T, count, min, onChange }: { T: Tokens; count: number; min: number; onChange: (n: number) => void }) {
   return (
     <div style={{ display:"flex", alignItems:"center", gap:14, margin:"12px 0" }}>
-      <button onClick={() => onChange(Math.max(MIN_WINDOWS, count - 1))}
-        style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count<=MIN_WINDOWS?"not-allowed":"pointer", opacity:count<=MIN_WINDOWS?0.4:1 }}>−</button>
+      <button onClick={() => onChange(Math.max(min, count - 1))}
+        style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count<=min?"not-allowed":"pointer", opacity:count<=min?0.4:1 }}>−</button>
       <span style={{ fontSize:20, fontWeight:800, color:T.TEXT, minWidth:24, textAlign:"center" as const }}>{count}</span>
       <button onClick={() => onChange(Math.min(MAX_WINDOWS, count + 1))}
         style={{ width:32, height:32, borderRadius:"50%", background:T.ACCENT_DIM, border:`1px solid ${T.ACCENT_BORDER}`, color:T.ACCENT, fontSize:18, fontWeight:700, cursor:count>=MAX_WINDOWS?"not-allowed":"pointer", opacity:count>=MAX_WINDOWS?0.4:1 }}>+</button>
-      <span style={{ fontSize:12, color:T.TEXT_DIM, marginLeft:4 }}>${count*PRICE_PER_WINDOW} total</span>
+      <span style={{ fontSize:12, color:T.TEXT_DIM, marginLeft:4 }}>${calcPrice(count, min)} total</span>
     </div>
   );
 }
@@ -228,9 +228,9 @@ export function CleanSkin(props: SkinProps) {
       case "windows": return (
         <ActiveCard T={T}>
           <CardLabel T={T} text="Windows" />
-          <p style={{ fontSize:13, color:T.TEXT_DIM, marginBottom:0 }}>How many windows today? <span style={{ color:T.ACCENT }}>${PRICE_PER_WINDOW} each</span></p>
-          <Counter T={T} count={windowCount} onChange={onWindowCountChange} />
-          <AccentBtn T={T} label={`✓ Confirm ${windowCount} window${windowCount!==1?"s":""} — $${windowCount*PRICE_PER_WINDOW}`} onClick={() => advance("contact")} />
+          <p style={{ fontSize:13, color:T.TEXT_DIM, marginBottom:0 }}>How many windows today? <span style={{ color:T.ACCENT }}>from $20/window</span></p>
+          <Counter T={T} count={windowCount} min={SERVICE_AREAS[currentZip]?.minWindows ?? MIN_WINDOWS} onChange={onWindowCountChange} />
+          <AccentBtn T={T} label={`✓ Confirm ${windowCount} window${windowCount!==1?"s":""} — $${calcPrice(windowCount, SERVICE_AREAS[currentZip]?.minWindows ?? MIN_WINDOWS)}`} onClick={() => advance("contact")} />
           <div style={{ display:"flex", marginTop:8 }}>
             <GhostBtn T={T} label="← Back" onClick={() => advance("timeslot")} />
           </div>

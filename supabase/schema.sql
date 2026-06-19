@@ -59,3 +59,19 @@ create table if not exists gig_completions (
 alter table gig_completions enable row level security;
 create policy "Service role can do anything on gig_completions"
   on gig_completions for all to service_role using (true) with check (true);
+
+-- Site settings — key/value store for feature flags and config
+create table if not exists site_settings (
+  key text primary key,
+  value text not null default ''
+);
+
+insert into site_settings (key, value) values ('promo_enabled', 'false')
+  on conflict (key) do nothing;
+
+-- Public can read settings, service role manages them
+alter table site_settings enable row level security;
+create policy "Anyone can read site_settings"
+  on site_settings for select to anon using (true);
+create policy "Service role can do anything on site_settings"
+  on site_settings for all to service_role using (true) with check (true);

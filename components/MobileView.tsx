@@ -45,25 +45,22 @@ export function MobileView(props: Props) {
       const map = new mapboxgl.Map({
         container: containerRef.current!,
         style: "mapbox://styles/mapbox/satellite-v9",
-        center: [-121.9018, 36.6182], // start at Aquarium — mirrors home desktop
-        zoom: 17.5,
-        pitch: 65,
-        bearing: -28,
+        // Still overhead — matches desktop intent
+        center: [-121.9900, 37.0050],
+        zoom: 10.5,
+        pitch: 0,
+        bearing: 0,
         interactive: false,
         attributionControl: false,
       });
 
+      // SAVED — Aquarium close-up intro + flyTo — restore if desired:
+      // center: [-121.9018, 36.6182], zoom: 17.5, pitch: 65, bearing: -28
+      // map.flyTo({ center: [-121.9900, 37.0050], zoom: 10.5, pitch: 48,
+      //   bearing: -8, duration: 9000, curve: 1.7, essential: true });
+
       map.on("load", () => {
         if (cancelled) return;
-        map.flyTo({
-          center:   [-121.9900, 37.0050],
-          zoom:     10.5,
-          pitch:    48,
-          bearing:  -8,
-          duration: 9000,
-          curve:    1.7,
-          essential: true,
-        });
       });
 
       mapRef.current = map;

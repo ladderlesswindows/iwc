@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatDate, formatTime, getNextDays, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
-import { PRICE_PER_WINDOW, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
+import { calcPrice, MIN_WINDOWS, MAX_WINDOWS } from "@/lib/constants";
 import { SERVICE_AREAS, DEFAULT_ZIP } from "@/lib/serviceAreas";
 import type { SkinProps } from "./types";
 import { AdminQuickAccess } from "./AdminQuickAccess";
@@ -126,8 +126,8 @@ export function GameSkin(props: SkinProps) {
     switch (s) {
       case "location": return `Greetings, traveler.\nI see your booking is set for ${SERVICE_AREAS[localZip]?.name ?? "Santa Cruz"}, CA ${localZip}.\nIs that the correct area for our crew?`;
       case "timeslot": return `Excellent. Your slot is held for ${slot}.\nShall we keep this time, or would you prefer another?`;
-      case "windows":  return `Very well. How many windows shall we cleanse today?\nEach pane: $22. No ladders, no mess, no hidden fees.`;
-      case "estimate": return `Understood — ${windowCount} window${windowCount!==1?"s":""} at $${windowCount*PRICE_PER_WINDOW}.\nShall I also arrange a full-house estimate?\nNo extra charge for the visit.`;
+      case "windows":  return `Very well. How many windows shall we cleanse today?\n$22 for the first, $20 each after. No ladders, no mess, no hidden fees.`;
+      case "estimate": return `Understood — ${windowCount} window${windowCount!==1?"s":""} at $${calcPrice(windowCount, SERVICE_AREAS[localZip]?.minWindows ?? 1)}.\nShall I also arrange a full-house estimate?\nNo extra charge for the visit.`;
       case "contact":  return `One last thing, traveler — where shall our crew find you?\nStreet and city will do. All else is optional.\nCA ${localZip} · Service confirmed.`;
       case "complete": return `The quest is complete, traveler.\nYour order awaits — press Book Now when ready.\nMay your windows shine like crystal.`;
     }
@@ -181,7 +181,7 @@ export function GameSkin(props: SkinProps) {
     switch (step) {
       case "location": return (<>{ffBtn(`1.  ✦  Yes, that's my area (${localZip})`, () => handleGoToStep("timeslot"), true)}{ffBtn("2.  ✧  Enter a different ZIP", () => { setShowZipInput(true); setZipError(""); })}{ffBtn("3.  ✧  New ZIP / Start over", () => { onZipChange?.(DEFAULT_ZIP); handleGoToStep("location"); })}</>);
       case "timeslot": return (<>{ffBtn(`1.  ✦  Perfect — keep ${date ? formatDate(date) : "July 4th"}`, () => handleGoToStep("windows"), true)}{ffBtn("2.  ✧  See other times", () => setShowSlots(v=>!v))}{ffBtn("3.  ✧  Back", () => handleGoToStep("location"))}</>);
-      case "windows":  return (<>{ffBtn(`1.  ✦  ${windowCount}w · $${windowCount*PRICE_PER_WINDOW} — continue`, () => handleGoToStep("estimate"), true)}{ffBtn("2.  ✧  Back", () => handleGoToStep("timeslot"))}</>);
+      case "windows":  return (<>{ffBtn(`1.  ✦  ${windowCount}w · $${calcPrice(windowCount, SERVICE_AREAS[localZip]?.minWindows ?? 1)} — continue`, () => handleGoToStep("estimate"), true)}{ffBtn("2.  ✧  Back", () => handleGoToStep("timeslot"))}</>);
       case "estimate": return (<>{ffBtn("1.  ✦  No — windows only", () => { onNeedsEstimateChange(false); handleGoToStep("contact"); }, true)}{ffBtn("2.  ✧  Yes — include full estimate", () => { onNeedsEstimateChange(true); handleGoToStep("contact"); })}{ffBtn("3.  ✧  Back", () => handleGoToStep("windows"))}</>);
       case "contact":  return (<>{ffBtn("1.  ✦  Done — review booking", () => handleGoToStep("complete"), true)}{ffBtn("2.  ✧  Skip", () => handleGoToStep("complete"))}{ffBtn("3.  ✧  Back", () => handleGoToStep("estimate"))}</>);
       case "complete": return (<>{ffBtn("1.  ✦  Go straight to checkout", onGoToSummary, true)}{ffBtn("2.  ✧  Start over", () => handleGoToStep("location"))}</>);
@@ -218,7 +218,7 @@ export function GameSkin(props: SkinProps) {
         <button onClick={()=>onWindowCountChange(Math.max(MIN_WINDOWS,windowCount-1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>−</button>
         <span style={{ fontFamily:"'Cinzel',serif", fontSize:20, color:"#c9a84c", minWidth:24, textAlign:"center" }}>{windowCount}</span>
         <button onClick={()=>onWindowCountChange(Math.min(MAX_WINDOWS,windowCount+1))} style={{ fontFamily:"'Cinzel',serif", fontSize:16, width:28, height:28, border:"1px solid #7ec8e3", background:"transparent", color:"#7ec8e3", cursor:"pointer", borderRadius:2 }}>+</button>
-        <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#7ec8e3", letterSpacing:1 }}>${windowCount*PRICE_PER_WINDOW} total</span>
+        <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#7ec8e3", letterSpacing:1 }}>${calcPrice(windowCount, SERVICE_AREAS[localZip]?.minWindows ?? 1)} total</span>
       </div>
     );
     if (step === "contact") return (

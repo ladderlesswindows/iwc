@@ -13,7 +13,8 @@
 
 import { useEffect, useState } from "react";
 import { formatDate, formatTime, FALLBACK_DATE, FALLBACK_TIME } from "@/lib/availability";
-import { PRICE_PER_WINDOW } from "@/lib/constants";
+import { calcPrice } from "@/lib/constants";
+import { SERVICE_AREAS } from "@/lib/serviceAreas";
 import { GameSkin } from "./npc/GameSkin";
 import { CleanSkin } from "./npc/CleanSkin";
 import { PowerConsoleSkin } from "./npc/PowerConsoleSkin";
@@ -89,7 +90,7 @@ export function NPCWidget(props: Props) {
   const questItems: QuestItem[] = [
     { step:"location", label:"Location",   confirmed:isConfirmed("location"), value:"Santa Cruz, CA 95060" },
     { step:"timeslot", label:"Date & Time", confirmed:isConfirmed("timeslot"), value: date ? `${formatDate(date)} · ${formatTime(time)}` : `${formatDate(FALLBACK_DATE)} · ${formatTime(FALLBACK_TIME)}` },
-    { step:"windows",  label:"Windows",    confirmed:isConfirmed("windows"),  value:`${windowCount}× · $${windowCount * PRICE_PER_WINDOW}` },
+    { step:"windows",  label:"Windows",    confirmed:isConfirmed("windows"),  value:`${windowCount}× · $${calcPrice(windowCount, SERVICE_AREAS[selectedZip ?? "95060"]?.minWindows ?? 1)}` },
     { step:"contact",  label:"Address",    confirmed:isConfirmed("contact"),  value:"On file" },
   ];
 
