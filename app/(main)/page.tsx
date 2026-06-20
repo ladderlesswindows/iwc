@@ -292,8 +292,8 @@ export default function HomePage() {
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.62)", lineHeight: 1.7, marginBottom: 28 }}>
                 We believe this system lets us lower your overall prices for long-term maintenance — and it means every visit actually moves the needle on your windows.
               </p>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginBottom: 24 }}>
-                * 1-window minimum applies to estimate visits only. Standard bookings are priced per your ZIP area minimum.
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 24, lineHeight: 1.6 }}>
+                * Minimums vary by distance — 1 window for Santa Cruz &amp; Live Oak, 2 windows for Capitola &amp; UCSC, 3 windows for Aptos, Soquel, Scotts Valley, Felton &amp; Pleasure Point.
               </div>
               <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
                 <button
