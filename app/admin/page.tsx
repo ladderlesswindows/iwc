@@ -14,7 +14,7 @@ import type { Booking, BlockedSlot } from "@/app/admin/types";
 const SESSION_KEY = "iwc_admin";
 const PW_KEY = "iwc_admin_pw";
 
-type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "settings" | "analytics" | "finance";
+type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "settings" | "analytics" | "finance" | "chat";
 
 interface GigCompletion {
   id: string;
@@ -48,6 +48,7 @@ export default function AdminPage() {
   const [approving, setApproving]     = useState<string | null>(null);
   const [finTx, setFinTx]       = useState<{ id: string; date: string; description: string; amount: number; type: "income" | "expense"; source: string; category: string | null }[]>([]);
   const [finMile, setFinMile]   = useState<{ id: string; date: string; miles: number; description: string | null }[]>([]);
+  const [escalations, setEscalations] = useState<{ id: string; created_at: string; name: string | null; phone: string | null; summary: string | null; transcript: { role: string; content: string }[] | null }[]>([]);
 
   const [analytics, setAnalytics] = useState<{
     summary: { totalBookings: number; bookings30d: number; bookings7d: number; totalRevenue: number; revenue30d: number; revenue7d: number; avgTicket: number; avgWindows: number };
@@ -106,6 +107,8 @@ export default function AdminPage() {
     if (txRes.ok) { const { transactions: d } = await txRes.json(); if (d) setFinTx(d); }
     const miRes = await fetch("/api/admin/mileage", { headers: h });
     if (miRes.ok) { const { entries: d } = await miRes.json(); if (d) setFinMile(d); }
+    const esRes = await fetch("/api/chat/escalate", { headers: h });
+    if (esRes.ok) { const d = await esRes.json(); if (Array.isArray(d)) setEscalations(d); }
   }, []);
 
   async function handleReviewStatus(id: string, status: "approved" | "rejected") {
@@ -238,6 +241,7 @@ export default function AdminPage() {
     { id: "settings",   label: "Settings" },
     { id: "analytics",  label: "Analytics" },
     { id: "finance",    label: "Finance" },
+    { id: "chat",       label: "Chat" },
   ];
 
   const S: Record<string, React.CSSProperties> = {
@@ -758,6 +762,54 @@ export default function AdminPage() {
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {/* ── Chat Escalations ── */}
+          {tab === "chat" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 4 }}>
+                Customers who asked to speak with Chris via the chat widget.
+              </div>
+              {escalations.length === 0 && (
+                <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>No escalations yet.</p>
+              )}
+              {escalations.map(e => (
+                <div key={e.id} style={{
+                  background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 12, padding: "14px 16px",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>{e.name ?? "Unknown"}</div>
+                      <div style={{ fontSize: 12, color: "rgba(126,200,227,0.7)", marginTop: 2 }}>{e.phone ?? "No phone"}</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)" }}>
+                      {new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    </div>
+                  </div>
+                  {e.summary && (
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", fontStyle: "italic", marginBottom: 8 }}>
+                      &ldquo;{e.summary}&rdquo;
+                    </div>
+                  )}
+                  {e.transcript && e.transcript.length > 0 && (
+                    <details style={{ marginTop: 4 }}>
+                      <summary style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", cursor: "pointer" }}>
+                        View transcript ({e.transcript.length} messages)
+                      </summary>
+                      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                        {e.transcript.map((m, i) => (
+                          <div key={i} style={{ fontSize: 11, color: m.role === "user" ? "rgba(126,200,227,0.7)" : "rgba(255,255,255,0.5)" }}>
+                            <span style={{ fontWeight: 700, marginRight: 6 }}>{m.role === "user" ? "Customer:" : "Bot:"}</span>
+                            {m.content}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
