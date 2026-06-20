@@ -10,6 +10,10 @@
 //   5. Update CLOCK_TOWER_ZIP_KEY and CLOCK_TOWER_COORDS / CLOCK_TOWER_CAMERA
 //      (or remove the clock-tower special case in MapPanel if not applicable)
 //   6. Update the saved flyTo comment in MapPanel.tsx and MobileView.tsx
+//   7. Update the fine-print footnote in the "Not Your First Rodeo" modal
+//      (app/(main)/page.tsx — search "Minimums vary by distance") — it lists
+//      neighborhood names and their minWindows tiers by proximity, so it needs
+//      to reflect the new location's ZIP/name groupings.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ServiceArea } from "./serviceAreaTypes";
