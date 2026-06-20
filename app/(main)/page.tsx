@@ -49,11 +49,19 @@ export default function HomePage() {
   const [selectedZip, setSelectedZip] = useState(DEFAULT_ZIP);
   const [goTrigger, setGoTrigger] = useState(0);
   const [panelVisible, setPanelVisible] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewMode, setReviewMode]       = useState(false);
+  const [rodeoModal, setRodeoModal]       = useState(false);
+  const [pendingSummaryUrl, setPendingSummaryUrl] = useState("");
 
   function handleGoToReview() {
     setPanelVisible(false);
     setReviewMode(true);
+  }
+
+  function goToSummary() {
+    const url = `/summary?${buildParams().toString()}`;
+    setPendingSummaryUrl(url);
+    setRodeoModal(true);
   }
 
   // ── Booking navigation ────────────────────────────────────────
@@ -216,7 +224,7 @@ export default function HomePage() {
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}
                 >← Edit</button>
                 <button
-                  onClick={() => router.push(`/summary?${buildParams().toString()}`)}
+                  onClick={goToSummary}
                   style={{
                     flex: 1, background: "rgba(126,200,227,0.16)",
                     border: "1px solid rgba(126,200,227,0.42)",
@@ -230,6 +238,93 @@ export default function HomePage() {
                 >Confirm &amp; Book →</button>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Not Your First Rodeo modal ── */}
+      <AnimatePresence>
+        {rodeoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 100,
+              background: "rgba(5,5,8,0.72)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "0 20px",
+            }}
+            onClick={() => setRodeoModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 32, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: "min(640px, 100%)",
+                background: "rgba(8,8,18,0.97)",
+                backdropFilter: "blur(28px)",
+                WebkitBackdropFilter: "blur(28px)",
+                border: "1px solid rgba(126,200,227,0.18)",
+                borderRadius: 22,
+                padding: "36px 36px 32px",
+                boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+              }}
+            >
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(126,200,227,0.45)", marginBottom: 12 }}>
+                A note before you book
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "rgba(255,255,255,0.95)", letterSpacing: "-0.02em", marginBottom: 22, lineHeight: 1.15 }}>
+                Not Your First Rodeo
+              </div>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.62)", lineHeight: 1.7, marginBottom: 10 }}>
+                We know you usually book windows in a different way — so to be clear, here&apos;s what&apos;s different:
+              </p>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.7, marginBottom: 8 }}>
+                We&apos;re converting our no-obligation free estimates into a <strong style={{ color: "rgba(126,200,227,0.9)" }}>1-window minimum</strong> — meaning the estimate itself comes with at least one window cleaned, on us at cost.
+              </p>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.62)", lineHeight: 1.7, marginBottom: 28 }}>
+                We believe this system lets us lower your overall prices for long-term maintenance — and it means every visit actually moves the needle on your windows.
+              </p>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginBottom: 24 }}>
+                * 1-window minimum applies to estimate visits only. Standard bookings are priced per your ZIP area minimum.
+              </div>
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setRodeoModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 12, color: "rgba(255,255,255,0.35)",
+                    fontSize: 13, fontWeight: 600, padding: "12px 20px",
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  ← Go back
+                </button>
+                <button
+                  onClick={() => { setRodeoModal(false); router.push(pendingSummaryUrl); }}
+                  style={{
+                    background: "rgba(126,200,227,0.16)",
+                    border: "1px solid rgba(126,200,227,0.42)",
+                    borderRadius: 12, color: "rgba(126,200,227,0.95)",
+                    fontSize: 13, fontWeight: 700, padding: "12px 24px",
+                    cursor: "pointer", fontFamily: "inherit",
+                    letterSpacing: "0.04em",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(126,200,227,0.26)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "rgba(126,200,227,0.16)"}
+                >
+                  Got it — continue →
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -265,7 +360,7 @@ export default function HomePage() {
           goTrigger={goTrigger}
           onGo={() => setGoTrigger(t => t + 1)}
           onStepChange={setActiveStep}
-          onGoToSummary={() => router.push(`/summary?${buildParams().toString()}`)}
+          onGoToSummary={goToSummary}
         />
       </div>
     </>
