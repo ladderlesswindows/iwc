@@ -260,6 +260,11 @@ export default function HomePage() {
           onEmailChange={setEmail}
           onNotesChange={setNotes}
           slotMap={slotMap}
+          selectedZip={selectedZip}
+          onZipChange={setSelectedZip}
+          goTrigger={goTrigger}
+          onGo={() => setGoTrigger(t => t + 1)}
+          onStepChange={setActiveStep}
           onGoToSummary={() => router.push(`/summary?${buildParams().toString()}`)}
         />
       </div>

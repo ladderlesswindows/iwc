@@ -286,7 +286,7 @@ export function CleanSkin(props: SkinProps) {
 
       {/* Toolbar */}
       <div style={{ marginBottom:14, display:"flex", alignItems:"center", justifyContent:"flex-end", gap:6 }}>
-        {onSkinChange && (
+        {onSkinChange && STEPS.indexOf(step) >= 2 && (
           <button onClick={() => onSkinChange("power")}
             title="Switch to full form"
             style={{ background:"transparent", border:`1px solid ${T.CARD_BORDER}`, borderRadius:6, color:T.TEXT_DIM, fontSize:9, fontWeight:600, letterSpacing:"0.06em", padding:"3px 7px", cursor:"pointer", textTransform:"uppercase" as const, fontFamily:"inherit" }}
