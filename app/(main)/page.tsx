@@ -50,8 +50,7 @@ export default function HomePage() {
   const [goTrigger, setGoTrigger] = useState(0);
   const [panelVisible, setPanelVisible] = useState(false);
   const [reviewMode, setReviewMode]       = useState(false);
-  const [rodeoModal, setRodeoModal]       = useState(false);
-  const [pendingSummaryUrl, setPendingSummaryUrl] = useState("");
+  const [rodeoModal, setRodeoModal] = useState(false);
 
   function handleGoToReview() {
     setPanelVisible(false);
@@ -59,9 +58,7 @@ export default function HomePage() {
   }
 
   function goToSummary() {
-    const url = `/summary?${buildParams().toString()}`;
-    setPendingSummaryUrl(url);
-    setRodeoModal(true);
+    router.push(`/summary?${buildParams().toString()}`);
   }
 
   // ── Booking navigation ────────────────────────────────────────
@@ -156,6 +153,7 @@ export default function HomePage() {
                 onGoToSummary={handleGoToReview}
                 onStepChange={setActiveStep}
                 onZipChange={setSelectedZip}
+                onBeforeCheckout={() => setRodeoModal(true)}
                 slotMap={slotMap}
                 goTrigger={goTrigger}
               />
@@ -309,7 +307,7 @@ export default function HomePage() {
                   ← Go back
                 </button>
                 <button
-                  onClick={() => { setRodeoModal(false); router.push(pendingSummaryUrl); }}
+                  onClick={() => { setRodeoModal(false); }}
                   style={{
                     background: "rgba(126,200,227,0.16)",
                     border: "1px solid rgba(126,200,227,0.42)",
@@ -361,6 +359,7 @@ export default function HomePage() {
           onGo={() => setGoTrigger(t => t + 1)}
           onStepChange={setActiveStep}
           onGoToSummary={goToSummary}
+          onBeforeCheckout={() => setRodeoModal(true)}
         />
       </div>
     </>

@@ -72,4 +72,7 @@ export interface SkinProps {
 
   // Skin switching (from within a skin, e.g. "Full Form" button)
   onSkinChange?: (skin: Skin) => void;
+
+  // Fired when user completes address and taps "Done — review booking"
+  onBeforeCheckout?: () => void;
 }

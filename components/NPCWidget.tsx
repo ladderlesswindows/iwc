@@ -53,6 +53,7 @@ interface Props {
   onGoToSummary: () => void;
   onStepChange?: (step: Step) => void;
   onZipChange?: (zip: string) => void;
+  onBeforeCheckout?: () => void;
   goTrigger?: number;
 }
 
@@ -64,7 +65,7 @@ export function NPCWidget(props: Props) {
     address, firstName, lastName, phone, email, notes,
     onAddressChange, onFirstNameChange, onLastNameChange,
     onPhoneChange, onEmailChange, onNotesChange,
-    selectedZip, slotMap, paused, onResume, onGoToSummary, onStepChange, onZipChange,
+    selectedZip, slotMap, paused, onResume, onGoToSummary, onStepChange, onZipChange, onBeforeCheckout,
   } = props;
 
   // ── Panel state ───────────────────────────────────────────────────
@@ -99,7 +100,7 @@ export function NPCWidget(props: Props) {
     date, time, windowCount, needsEstimate, estimateDeadline, slotMap,
     onDateChange, onTimeChange, onWindowCountChange,
     onNeedsEstimateChange, onEstimateDeadlineChange,
-    paused, onResume, onGoToSummary, onZipChange,
+    paused, onResume, onGoToSummary, onZipChange, onBeforeCheckout,
     selectedZip,
     address, onAddressChange,
     firstName, phone, email,

@@ -259,7 +259,7 @@ export function CleanSkin(props: SkinProps) {
               CA&nbsp;&nbsp;{currentZip}
             </div>
           </div>
-          <AccentBtn T={T} label="✓ Done — review booking" onClick={() => { pushAddress(streetLine, apt, town, currentZip); advance("complete"); }} />
+          <AccentBtn T={T} label="✓ Done — review booking" onClick={() => { pushAddress(streetLine, apt, town, currentZip); advance("complete"); props.onBeforeCheckout?.(); }} />
           <div style={{ display:"flex", gap:8, marginTop:8 }}>
             <GhostBtn T={T} label="Skip" onClick={() => advance("complete")} />
             <GhostBtn T={T} label="← Back" onClick={() => advance("windows")} />

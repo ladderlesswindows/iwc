@@ -41,6 +41,7 @@ interface Props {
   onGo: () => void;
   onStepChange: (s: Step) => void;
   onGoToSummary: () => void;
+  onBeforeCheckout?: () => void;
 }
 
 type Phase = "idle" | "zip" | "npc";
@@ -370,6 +371,7 @@ export function MobileView(props: Props) {
                 paused={false}
                 onResume={() => {}}
                 onGoToSummary={props.onGoToSummary}
+                onBeforeCheckout={props.onBeforeCheckout}
                 onStepChange={handleStepChange}
                 onZipChange={props.onZipChange}
                 slotMap={props.slotMap}
