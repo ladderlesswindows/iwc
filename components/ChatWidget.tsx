@@ -61,8 +61,9 @@ export function ChatWidget() {
         body: JSON.stringify({ messages: next }),
       });
 
-      const { text: full } = await res.json();
-      const { clean, escalation } = parseEscalation(full);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
+      const { clean, escalation } = parseEscalation(data.text ?? "");
       setMessages(m => [...m, { role: "assistant", content: clean }]);
 
       if (escalation) {
@@ -79,8 +80,8 @@ export function ChatWidget() {
           }),
         });
       }
-    } catch {
-      setMessages(m => [...m, { role: "assistant", content: "Something went wrong — try again or call us directly." }]);
+    } catch (err) {
+      setMessages(m => [...m, { role: "assistant", content: `Error: ${String(err)}` }]);
     } finally {
       setLoading(false);
     }

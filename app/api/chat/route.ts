@@ -84,17 +84,22 @@ TONE:
 - If you don't know something, say so and offer to connect them with Chris.`;
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
+  try {
+    const { messages } = await req.json();
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
-    system: SYSTEM,
-    messages,
-  });
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      system: SYSTEM,
+      messages,
+    });
 
-  const text = message.content[0].type === "text" ? message.content[0].text : "";
-  return NextResponse.json({ text });
+    const text = message.content[0].type === "text" ? message.content[0].text : "";
+    return NextResponse.json({ text });
+  } catch (err) {
+    console.error("Chat API error:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
