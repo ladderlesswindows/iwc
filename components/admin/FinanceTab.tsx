@@ -234,6 +234,67 @@ function MileRow({ entry, onDelete, pw }: { entry: MileageEntry; onDelete: (id: 
   );
 }
 
+// ── Month separator helpers ───────────────────────────────────────────────────
+
+const MONTH_COLORS = [
+  "rgba(126,200,227,", // Jan — teal
+  "rgba(167,139,250,", // Feb — purple
+  "rgba(251,191,36,",  // Mar — amber
+  "rgba(52,211,153,",  // Apr — emerald
+  "rgba(251,113,133,", // May — rose
+  "rgba(99,179,237,",  // Jun — sky
+  "rgba(251,146,60,",  // Jul — orange
+  "rgba(163,230,53,",  // Aug — lime
+  "rgba(232,121,249,", // Sep — fuchsia
+  "rgba(94,234,212,",  // Oct — cyan
+  "rgba(250,204,21,",  // Nov — yellow
+  "rgba(248,113,113,", // Dec — red
+];
+
+function monthColor(date: string) {
+  const m = parseInt(date.slice(5, 7), 10) - 1;
+  return MONTH_COLORS[m] ?? MONTH_COLORS[0];
+}
+
+function MonthSeparator({ date }: { date: string }) {
+  const c = monthColor(date);
+  const label = new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8,
+      padding: "10px 10px 4px", marginTop: 4,
+    }}>
+      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: `${c}0.8)` }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 1, background: `${c}0.15)` }} />
+    </div>
+  );
+}
+
+function sortedByDate(list: Transaction[]) {
+  return [...list].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function TxListWithSeparators({ list, pw, onDelete }: {
+  list: Transaction[];
+  pw: string;
+  onDelete: (id: string) => void;
+}) {
+  const sorted = sortedByDate(list);
+  const items: React.ReactNode[] = [];
+  let lastMonth = "";
+  sorted.forEach(tx => {
+    const month = tx.date.slice(0, 7);
+    if (month !== lastMonth) {
+      items.push(<MonthSeparator key={`sep-${month}`} date={tx.date} />);
+      lastMonth = month;
+    }
+    items.push(<TxRow key={tx.id} tx={tx} pw={pw} onDelete={onDelete} />);
+  });
+  return <>{items}</>;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, onMileageChange }: {
@@ -464,9 +525,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
             </div>
             <div style={{ maxHeight: 500, overflowY: "auto" }}>
               {list.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No transactions for this account yet.</p>}
-              {list.sort((a, b) => b.date.localeCompare(a.date)).map(t => (
-                <TxRow key={t.id} tx={t} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
-              ))}
+              <TxListWithSeparators list={list} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
             </div>
           </div>
         );
@@ -504,9 +563,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
           <AddRow type="income" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             {income.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No income yet.</p>}
-            {income.map(t => (
-              <TxRow key={t.id} tx={t} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
-            ))}
+            <TxListWithSeparators list={income} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
           </div>
         </div>
 
@@ -520,9 +577,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
           <AddRow type="expense" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
             {expense.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No expenses yet.</p>}
-            {expense.map(t => (
-              <TxRow key={t.id} tx={t} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
-            ))}
+            <TxListWithSeparators list={expense} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
           </div>
         </div>
       </div>}
