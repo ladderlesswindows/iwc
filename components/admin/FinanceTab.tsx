@@ -366,10 +366,23 @@ function TxListWithSeparators({ list, pw, onDelete }: {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, onMileageChange }: {
+interface GigBooking {
+  id: string;
+  service_date: string;
+  service_time: string;
+  address: string;
+  first_name: string | null;
+  last_name: string | null;
+  window_count: number;
+  total_price: number;
+  status: string;
+}
+
+export function FinanceTab({ pw, transactions, mileage, bookings, onTransactionsChange, onMileageChange }: {
   pw: string;
   transactions: Transaction[];
   mileage: MileageEntry[];
+  bookings?: GigBooking[];
   onTransactionsChange: (t: Transaction[]) => void;
   onMileageChange: (m: MileageEntry[]) => void;
 }) {
@@ -379,7 +392,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
   const [preview, setPreview]       = useState<ParsedRow[] | null>(null);
   const [previewAcct, setPreviewAcct] = useState<1 | 2 | 3>(1);
   const [importing, setImporting]   = useState(false);
-  const [finTab, setFinTab] = useState<"overview" | "acct1" | "acct2" | "acct3" | "taxes" | "inc-list" | "exp-list" | "mile-list">("overview");
+  const [finTab, setFinTab] = useState<"overview" | "acct1" | "acct2" | "acct3" | "taxes" | "inc-list" | "exp-list" | "mile-list" | "worker">("overview");
   const [search, setSearch] = useState("");
   const [mileInlineDate, setMileInlineDate] = useState<string | null>(null);
   const [mileInlineVal, setMileInlineVal]   = useState("");
@@ -540,6 +553,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
         {tabBtn("inc-list", "Income")}
         {tabBtn("exp-list", "Expenses")}
         {tabBtn("mile-list", "Mileage")}
+        {tabBtn("worker", "Worker Log")}
       </div>
 
       {/* YTD summary strip */}
@@ -898,6 +912,34 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
           </div>
         </div>
       )}
+
+      {/* Worker Log */}
+      {finTab === "worker" && (() => {
+        const log = [...(bookings ?? [])].sort((a, b) => b.service_date.localeCompare(a.service_date));
+        const statusColor = (s: string) => s === "completed" ? `${TEAL}0.8)` : s === "pending" ? `${PURPLE}0.7)` : "rgba(255,255,255,0.3)";
+        return (
+          <div style={col}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+              <div style={sectionLabel}>Gig Log</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: `${TEAL}0.9)` }}>{log.length} bookings</div>
+            </div>
+            {log.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No bookings yet.</p>}
+            <div style={{ maxHeight: 700, overflowY: "auto" }}>
+              {log.map(b => (
+                <div key={b.id} style={{ display: "grid", gridTemplateColumns: "100px 1fr 60px 70px 70px", gap: 8, alignItems: "center", padding: "7px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12 }}>
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontVariantNumeric: "tabular-nums" }}>{b.service_date}</span>
+                  <span style={{ color: "rgba(255,255,255,0.75)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {[b.first_name, b.last_name].filter(Boolean).join(" ") || b.address}
+                  </span>
+                  <span style={{ color: "rgba(255,255,255,0.35)", textAlign: "right" }}>{b.window_count}w</span>
+                  <span style={{ color: `${TEAL}0.85)`, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>${b.total_price.toFixed(2)}</span>
+                  <span style={{ color: statusColor(b.status), textAlign: "right", textTransform: "capitalize" }}>{b.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Taxes / Schedule C */}
       {finTab === "taxes" && (() => {

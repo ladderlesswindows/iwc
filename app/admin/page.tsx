@@ -659,6 +659,7 @@ export default function AdminPage() {
               pw={pw}
               transactions={finTx}
               mileage={finMile}
+              bookings={bookings}
               onTransactionsChange={setFinTx}
               onMileageChange={setFinMile}
             />
