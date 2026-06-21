@@ -270,15 +270,23 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
 
   function handleFile(acct: 1 | 2) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const rows = bankCSVtoRows(ev.target?.result as string);
-        setPreviewAcct(acct);
-        setPreview(rows);
-      };
-      reader.readAsText(file);
+      const files = Array.from(e.target.files ?? []);
+      if (!files.length) return;
+      const allRows: ParsedRow[] = [];
+      let done = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const rows = bankCSVtoRows(ev.target?.result as string);
+          allRows.push(...rows);
+          done++;
+          if (done === files.length) {
+            setPreviewAcct(acct);
+            setPreview(allRows);
+          }
+        };
+        reader.readAsText(file);
+      });
       e.target.value = "";
     };
   }
@@ -439,8 +447,8 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
               }}>
               ↑ CSV — Acct 2
             </button>
-            <input ref={fileRef1} type="file" accept=".csv,.tsv,.txt" onChange={handleFile(1)} style={{ display: "none" }} />
-            <input ref={fileRef2} type="file" accept=".csv,.tsv,.txt" onChange={handleFile(2)} style={{ display: "none" }} />
+            <input ref={fileRef1} type="file" accept=".csv,.tsv,.txt" multiple onChange={handleFile(1)} style={{ display: "none" }} />
+            <input ref={fileRef2} type="file" accept=".csv,.tsv,.txt" multiple onChange={handleFile(2)} style={{ display: "none" }} />
           </div>
           <AddRow type="income" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
