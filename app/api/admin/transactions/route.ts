@@ -25,6 +25,16 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ transactions: data });
 }
 
+export async function PATCH(req: NextRequest) {
+  const deny = assertAdmin(req);
+  if (deny) return deny;
+  const { id, category } = await req.json();
+  const db = getServiceClient();
+  const { data, error } = await db.from("transactions").update({ category }).eq("id", id).select();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ transaction: data[0] });
+}
+
 export async function DELETE(req: NextRequest) {
   const deny = assertAdmin(req);
   if (deny) return deny;

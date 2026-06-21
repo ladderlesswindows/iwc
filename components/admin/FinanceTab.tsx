@@ -101,6 +101,33 @@ function bankCSVtoRows(text: string): ParsedRow[] {
   return rows;
 }
 
+// ── Schedule C categories ─────────────────────────────────────────────────────
+
+export const SCHED_C_INCOME = [
+  "Service Revenue",
+  "Tips Received",
+  "Other Income",
+];
+
+export const SCHED_C_EXPENSES = [
+  "Advertising & Marketing",
+  "Car & Truck (Actual)",
+  "Commissions & Fees",
+  "Contract Labor",
+  "Insurance (Business)",
+  "Legal & Professional",
+  "Office Supplies",
+  "Repairs & Maintenance",
+  "Supplies",
+  "Taxes & Licenses",
+  "Travel",
+  "Meals (50% deductible)",
+  "Utilities",
+  "Other Expenses",
+];
+
+const ALL_CATEGORIES = [...SCHED_C_INCOME, ...SCHED_C_EXPENSES];
+
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const TEAL   = "rgba(126,200,227,";
@@ -309,7 +336,8 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
   const [preview, setPreview]       = useState<ParsedRow[] | null>(null);
   const [previewAcct, setPreviewAcct] = useState<1 | 2>(1);
   const [importing, setImporting]   = useState(false);
-  const [finTab, setFinTab] = useState<"overview" | "acct1" | "acct2">("overview");
+  const [finTab, setFinTab] = useState<"overview" | "acct1" | "acct2" | "taxes">("overview");
+  const [search, setSearch] = useState("");
 
   // Mileage add form state
   const today = new Date().toISOString().slice(0, 10);
@@ -376,6 +404,22 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
     setPreview(prev => prev ? prev.map((r, idx) => idx === i ? { ...r, selected: !r.selected } : r) : null);
   }
 
+  async function updateCategory(id: string, category: string) {
+    await fetch("/api/admin/transactions", {
+      method: "PATCH", headers: adminHeader(pw), body: JSON.stringify({ id, category }),
+    });
+    onTransactionsChange(transactions.map(t => t.id === id ? { ...t, category } : t));
+  }
+
+  async function bulkCategory(ids: string[], category: string) {
+    await Promise.all(ids.map(id =>
+      fetch("/api/admin/transactions", {
+        method: "PATCH", headers: adminHeader(pw), body: JSON.stringify({ id, category }),
+      })
+    ));
+    onTransactionsChange(transactions.map(t => ids.includes(t.id) ? { ...t, category } : t));
+  }
+
   async function addMile() {
     const miles = parseFloat(mMiles);
     if (!miles || !mDate) return;
@@ -424,10 +468,11 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* View tabs */}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {tabBtn("overview", "Overview")}
         {tabBtn("acct1", "Account 1")}
         {tabBtn("acct2", "Account 2")}
+        {tabBtn("taxes", "Taxes / Sched C")}
       </div>
 
       {/* YTD summary strip */}
@@ -531,6 +576,73 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
         );
       })()}
 
+      {/* Search + categorize */}
+      {finTab === "overview" && (() => {
+        const term = search.trim().toLowerCase();
+        const hits = term ? transactions.filter(t => t.description.toLowerCase().includes(term)) : [];
+        const hitIds = hits.map(h => h.id);
+        return (
+          <div style={col}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                placeholder="Search transactions (e.g. safeway, instacart…)"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ ...fieldStyle, flex: 1 }}
+              />
+              {search && <button onClick={() => setSearch("")}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 16, cursor: "pointer", padding: "0 4px" }}>×</button>}
+            </div>
+            {term && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{hits.length} result{hits.length !== 1 ? "s" : ""}</span>
+                  {hits.length > 1 && (
+                    <>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>· tag all as</span>
+                      <select
+                        defaultValue=""
+                        onChange={async e => {
+                          if (!e.target.value) return;
+                          await bulkCategory(hitIds, e.target.value);
+                          e.target.value = "";
+                        }}
+                        style={{ ...fieldStyle, fontSize: 10, padding: "4px 8px" }}
+                      >
+                        <option value="">choose category…</option>
+                        <optgroup label="Income">{SCHED_C_INCOME.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
+                        <optgroup label="Expenses">{SCHED_C_EXPENSES.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
+                      </select>
+                    </>
+                  )}
+                </div>
+                <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                  {hits.length === 0 && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>No matches.</p>}
+                  {sortedByDate(hits).map(t => (
+                    <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12 }}>
+                      <span style={{ color: "rgba(255,255,255,0.28)", width: 84, flexShrink: 0, fontSize: 10 }}>{t.date}</span>
+                      <span style={{ flex: 1, color: "rgba(255,255,255,0.65)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.description}</span>
+                      <span style={{ color: t.type === "income" ? `${TEAL}0.85)` : `${RED}0.75)`, fontWeight: 700, flexShrink: 0, width: 72, textAlign: "right" }}>
+                        {t.type === "expense" ? "−" : ""}${Number(t.amount).toFixed(2)}
+                      </span>
+                      <select
+                        value={t.category ?? ""}
+                        onChange={e => updateCategory(t.id, e.target.value)}
+                        style={{ ...fieldStyle, fontSize: 10, padding: "3px 6px", width: 150, flexShrink: 0 }}
+                      >
+                        <option value="">uncategorized</option>
+                        <optgroup label="Income">{SCHED_C_INCOME.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
+                        <optgroup label="Expenses">{SCHED_C_EXPENSES.map(c => <option key={c} value={c}>{c}</option>)}</optgroup>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Income / Expense columns */}
       {finTab === "overview" && <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
 
@@ -616,6 +728,85 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
           ))}
         </div>
       </div>}
+
+      {/* Taxes / Schedule C */}
+      {finTab === "taxes" && (() => {
+        const fmt = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const catTotal = (cat: string) =>
+          transactions.filter(t => t.category === cat).reduce((s, t) => s + Number(t.amount), 0);
+        const uncategorized = transactions.filter(t => !t.category || t.category === "");
+        const totalIncome  = SCHED_C_INCOME.reduce((s, c) => s + catTotal(c), 0);
+        const totalExpense = SCHED_C_EXPENSES.reduce((s, c) => s + catTotal(c), 0);
+        const mileDeduction = milesYTD * 0.67;
+        const netProfit = totalIncome - totalExpense - mileDeduction;
+
+        const Section = ({ title, cats, color }: { title: string; cats: string[]; color: string }) => (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color, marginBottom: 8 }}>{title}</div>
+            {cats.map(cat => {
+              const total = catTotal(cat);
+              if (total === 0) return null;
+              return (
+                <div key={cat} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12 }}>
+                  <span style={{ color: "rgba(255,255,255,0.55)" }}>{cat}</span>
+                  <span style={{ fontWeight: 700, color }}>{fmt(total)}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {[
+                { label: "Total Income",      value: fmt(totalIncome),     color: `${TEAL}0.9)` },
+                { label: "Total Expenses",    value: fmt(totalExpense),    color: `${RED}0.8)` },
+                { label: "Mileage Deduction", value: fmt(mileDeduction),   color: `${PURPLE}0.85)` },
+                { label: "Est. Net Profit",   value: fmt(netProfit),       color: netProfit >= 0 ? `${TEAL}0.9)` : `${RED}0.8)` },
+              ].map(c => (
+                <div key={c.label} style={{ flex: "1 1 140px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 16px" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 5 }}>{c.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: c.color }}>{c.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={col}>
+              <Section title="Part I — Income" cats={SCHED_C_INCOME} color={`${TEAL}0.85)`} />
+              <Section title="Part II — Expenses" cats={SCHED_C_EXPENSES} color={`${RED}0.75)`} />
+              {milesYTD > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: `${PURPLE}0.7)`, marginBottom: 8 }}>Part II Line 9 — Car & Truck (Mileage Method)</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 12 }}>
+                    <span style={{ color: "rgba(255,255,255,0.55)" }}>{milesYTD.toFixed(1)} mi × $0.67</span>
+                    <span style={{ fontWeight: 700, color: `${PURPLE}0.85)` }}>{fmt(mileDeduction)}</span>
+                  </div>
+                </div>
+              )}
+              {uncategorized.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,150,50,0.7)", marginBottom: 8 }}>
+                    ⚠ Uncategorized ({uncategorized.length})
+                  </div>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 8 }}>Search these in Overview to tag them.</p>
+                  {uncategorized.slice(0, 8).map(t => (
+                    <div key={t.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 11, borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <span style={{ color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{t.description}</span>
+                      <span style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>{fmt(Number(t.amount))}</span>
+                    </div>
+                  ))}
+                  {uncategorized.length > 8 && <p style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 4 }}>…and {uncategorized.length - 8} more</p>}
+                </div>
+              )}
+            </div>
+
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>
+              Mileage uses IRS standard rate ($0.67/mi). Meals are 50% deductible — adjust at tax time. Not tax advice.
+            </p>
+          </div>
+        );
+      })()}
 
     </div>
   );
