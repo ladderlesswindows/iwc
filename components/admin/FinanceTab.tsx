@@ -193,7 +193,7 @@ function TxRow({ tx, onDelete, pw }: { tx: Transaction; onDelete: (id: string) =
       </span>
       <span style={{ color: "rgba(255,255,255,0.65)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {tx.description}
-        {tx.source === "upload" && <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(255,255,255,0.2)" }}>bank</span>}
+        {tx.source?.startsWith("upload") && <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(255,255,255,0.2)" }}>{tx.source === "upload-acct2" ? "acct 2" : "acct 1"}</span>}
       </span>
       <span style={{
         color: tx.type === "income" ? `${TEAL}0.85)` : `${RED}0.75)`,
@@ -243,9 +243,11 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
   onTransactionsChange: (t: Transaction[]) => void;
   onMileageChange: (m: MileageEntry[]) => void;
 }) {
-  const fileRef  = useRef<HTMLInputElement>(null);
-  const [preview, setPreview]   = useState<ParsedRow[] | null>(null);
-  const [importing, setImporting] = useState(false);
+  const fileRef1 = useRef<HTMLInputElement>(null);
+  const fileRef2 = useRef<HTMLInputElement>(null);
+  const [preview, setPreview]       = useState<ParsedRow[] | null>(null);
+  const [previewAcct, setPreviewAcct] = useState<1 | 2>(1);
+  const [importing, setImporting]   = useState(false);
 
   // Mileage add form state
   const today = new Date().toISOString().slice(0, 10);
@@ -266,16 +268,19 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
     .filter(m => m.date.startsWith(String(ytdYear)))
     .reduce((s, m) => s + Number(m.miles), 0);
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const rows = bankCSVtoRows(ev.target?.result as string);
-      setPreview(rows);
+  function handleFile(acct: 1 | 2) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const rows = bankCSVtoRows(ev.target?.result as string);
+        setPreviewAcct(acct);
+        setPreview(rows);
+      };
+      reader.readAsText(file);
+      e.target.value = "";
     };
-    reader.readAsText(file);
-    e.target.value = "";
   }
 
   async function importSelected() {
@@ -284,7 +289,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
     if (!selected.length) return;
     setImporting(true);
     const payload = selected.map(({ date, description, amount, type }) => ({
-      date, description, amount, type, source: "upload",
+      date, description, amount, type, source: `upload-acct${previewAcct}`,
     }));
     const res = await fetch("/api/admin/transactions", {
       method: "POST", headers: adminHeader(pw), body: JSON.stringify(payload),
@@ -359,7 +364,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
-              {preview.filter(r => r.selected).length} of {preview.length} rows selected
+              Account {previewAcct} — {preview.filter(r => r.selected).length} of {preview.length} rows selected
             </span>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setPreview(null)}
@@ -417,16 +422,25 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
           <div style={totalStyle(`${TEAL}0.9)`)}>
             ${incomeYTD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <button onClick={() => fileRef.current?.click()}
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <button onClick={() => fileRef1.current?.click()}
               style={{
                 background: `${TEAL}0.08)`, border: `1px solid ${TEAL}0.2)`,
                 borderRadius: 8, color: `${TEAL}0.8)`, fontSize: 11, fontWeight: 700,
                 padding: "7px 12px", cursor: "pointer",
               }}>
-              ↑ Bank CSV
+              ↑ CSV — Acct 1
             </button>
-            <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={handleFile} style={{ display: "none" }} />
+            <button onClick={() => fileRef2.current?.click()}
+              style={{
+                background: `${TEAL}0.08)`, border: `1px solid ${TEAL}0.2)`,
+                borderRadius: 8, color: `${TEAL}0.8)`, fontSize: 11, fontWeight: 700,
+                padding: "7px 12px", cursor: "pointer",
+              }}>
+              ↑ CSV — Acct 2
+            </button>
+            <input ref={fileRef1} type="file" accept=".csv,.tsv,.txt" onChange={handleFile(1)} style={{ display: "none" }} />
+            <input ref={fileRef2} type="file" accept=".csv,.tsv,.txt" onChange={handleFile(2)} style={{ display: "none" }} />
           </div>
           <AddRow type="income" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
           <div style={{ maxHeight: 340, overflowY: "auto" }}>
