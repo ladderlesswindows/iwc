@@ -237,6 +237,7 @@ function AddRow({ onAdd, type, pw }: {
 function TxRow({ tx, onDelete, pw, compact }: { tx: Transaction; onDelete: (id: string) => void; pw: string; compact?: boolean }) {
   const [deleting, setDeleting] = useState(false);
   async function del() {
+    if (!window.confirm(`Delete "${tx.description}"?`)) return;
     setDeleting(true);
     await fetch("/api/admin/transactions", {
       method: "DELETE", headers: adminHeader(pw), body: JSON.stringify({ id: tx.id }),
@@ -266,6 +267,7 @@ function TxRow({ tx, onDelete, pw, compact }: { tx: Transaction; onDelete: (id: 
 
 function MileRow({ entry, onDelete, pw, compact }: { entry: MileageEntry; onDelete: (id: string) => void; pw: string; compact?: boolean }) {
   async function del() {
+    if (!window.confirm(`Delete ${Number(entry.miles).toFixed(1)} mi — "${entry.description ?? entry.date}"?`)) return;
     await fetch("/api/admin/mileage", {
       method: "DELETE", headers: adminHeader(pw), body: JSON.stringify({ id: entry.id }),
     });
