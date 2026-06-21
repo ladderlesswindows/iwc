@@ -60,6 +60,12 @@ function parseDate(raw: string): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+const PAYPAL_SKIP_TYPES = [
+  "general currency conversion", "bank deposit to pp", "add funds from",
+  "general withdrawal", "withdrawal to bank", "general card deposit",
+  "hold", "reversal of", "dispute",
+];
+
 function bankCSVtoRows(text: string): ParsedRow[] {
   const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
   if (lines.length < 2) return [];
@@ -71,32 +77,57 @@ function bankCSVtoRows(text: string): ParsedRow[] {
   const debitIdx  = findCol(headers, "debit", "withdrawal", "charge");
   const creditIdx = findCol(headers, "credit", "deposit", "payment");
 
+  // PayPal export detection
+  const grossIdx  = findCol(headers, "gross");
+  const netIdx    = findCol(headers, "net");
+  const feeIdx    = findCol(headers, "fee");
+  const statusIdx = findCol(headers, "status");
+  const typeIdx   = findCol(headers, "type");
+  const isPayPal  = grossIdx !== -1 && feeIdx !== -1;
+
   if (dateIdx === -1) return [];
 
   const rows: ParsedRow[] = [];
   for (const line of lines.slice(1)) {
     if (!line.trim()) continue;
     const cells = parseCSVLine(line);
-    const date = parseDate(cells[dateIdx] ?? "");
-    const desc = (cells[descIdx] ?? cells.find((_, i) => i !== dateIdx && i !== amtIdx && i !== debitIdx && i !== creditIdx) ?? "").replace(/"/g, "");
 
-    let amount = 0;
-    if (amtIdx !== -1) {
-      amount = parseFloat((cells[amtIdx] ?? "0").replace(/[$,\s"]/g, ""));
-    } else if (debitIdx !== -1 || creditIdx !== -1) {
-      const debit  = debitIdx  !== -1 ? parseFloat((cells[debitIdx]  ?? "0").replace(/[$,\s"]/g, "")) || 0 : 0;
-      const credit = creditIdx !== -1 ? parseFloat((cells[creditIdx] ?? "0").replace(/[$,\s"]/g, "")) || 0 : 0;
-      amount = credit - debit;
+    if (isPayPal) {
+      // Skip non-completed transactions
+      const status = (cells[statusIdx] ?? "").replace(/"/g, "").trim().toLowerCase();
+      if (statusIdx !== -1 && status && status !== "completed") continue;
+      // Skip internal transfers / conversions
+      const txType = (cells[typeIdx] ?? "").replace(/"/g, "").trim().toLowerCase();
+      if (PAYPAL_SKIP_TYPES.some(s => txType.includes(s))) continue;
+
+      const date = parseDate(cells[dateIdx] ?? "");
+      const name = (cells[descIdx] ?? "").replace(/"/g, "").trim();
+      const typeLabel = typeIdx !== -1 ? (cells[typeIdx] ?? "").replace(/"/g, "").trim() : "";
+      const desc = name ? `${name}${typeLabel ? ` — ${typeLabel}` : ""}` : typeLabel || "PayPal";
+      // Prefer Net (after PayPal fees), fall back to Gross
+      const useIdx = netIdx !== -1 ? netIdx : grossIdx;
+      const net = parseFloat((cells[useIdx] ?? "0").replace(/[$,\s"]/g, ""));
+
+      if (!net || !date) continue;
+      rows.push({ date, description: desc.trim(), amount: Math.abs(net), type: net >= 0 ? "income" : "expense", selected: true });
+
+    } else {
+      // Standard bank CSV
+      const date = parseDate(cells[dateIdx] ?? "");
+      const desc = (cells[descIdx] ?? cells.find((_, i) => i !== dateIdx && i !== amtIdx && i !== debitIdx && i !== creditIdx) ?? "").replace(/"/g, "");
+
+      let amount = 0;
+      if (amtIdx !== -1) {
+        amount = parseFloat((cells[amtIdx] ?? "0").replace(/[$,\s"]/g, ""));
+      } else if (debitIdx !== -1 || creditIdx !== -1) {
+        const debit  = debitIdx  !== -1 ? parseFloat((cells[debitIdx]  ?? "0").replace(/[$,\s"]/g, "")) || 0 : 0;
+        const credit = creditIdx !== -1 ? parseFloat((cells[creditIdx] ?? "0").replace(/[$,\s"]/g, "")) || 0 : 0;
+        amount = credit - debit;
+      }
+
+      if (!amount || !desc || !date) continue;
+      rows.push({ date, description: desc.trim(), amount: Math.abs(amount), type: amount >= 0 ? "income" : "expense", selected: true });
     }
-
-    if (!amount || !desc || !date) continue;
-    rows.push({
-      date,
-      description: desc.trim(),
-      amount: Math.abs(amount),
-      type: amount >= 0 ? "income" : "expense",
-      selected: true,
-    });
   }
   return rows;
 }
