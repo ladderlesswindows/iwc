@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { adminHeader } from "@/lib/admin";
 
 interface Transaction {
@@ -201,7 +201,7 @@ function AddRow({ onAdd, type, pw }: {
   );
 }
 
-function TxRow({ tx, onDelete, pw }: { tx: Transaction; onDelete: (id: string) => void; pw: string }) {
+function TxRow({ tx, onDelete, pw, compact }: { tx: Transaction; onDelete: (id: string) => void; pw: string; compact?: boolean }) {
   const [deleting, setDeleting] = useState(false);
   async function del() {
     setDeleting(true);
@@ -212,31 +212,26 @@ function TxRow({ tx, onDelete, pw }: { tx: Transaction; onDelete: (id: string) =
   }
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-      borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12,
+      display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
+      borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12, minHeight: 35,
     }}>
-      <span style={{ color: "rgba(255,255,255,0.28)", width: 84, flexShrink: 0, fontSize: 10 }}>
-        {tx.date}
-      </span>
+      {!compact && <span style={{ color: "rgba(255,255,255,0.28)", width: 84, flexShrink: 0, fontSize: 10 }}>{tx.date}</span>}
       <span style={{ color: "rgba(255,255,255,0.65)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {tx.description}
         {tx.source?.startsWith("upload") && <span style={{ marginLeft: 6, fontSize: 9, color: "rgba(255,255,255,0.2)" }}>{tx.source === "upload-acct2" ? "acct 2" : "acct 1"}</span>}
       </span>
-      <span style={{
-        color: tx.type === "income" ? `${TEAL}0.85)` : `${RED}0.75)`,
-        fontWeight: 700, flexShrink: 0, width: 72, textAlign: "right",
-      }}>
+      <span style={{ color: tx.type === "income" ? `${TEAL}0.85)` : `${RED}0.75)`, fontWeight: 700, flexShrink: 0, width: 64, textAlign: "right" }}>
         {tx.type === "expense" ? "−" : ""}${Number(tx.amount).toFixed(2)}
       </span>
       <button onClick={del} disabled={deleting}
-        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.18)", cursor: "pointer", fontSize: 14, padding: "0 4px", flexShrink: 0 }}>
+        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.18)", cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>
         ×
       </button>
     </div>
   );
 }
 
-function MileRow({ entry, onDelete, pw }: { entry: MileageEntry; onDelete: (id: string) => void; pw: string }) {
+function MileRow({ entry, onDelete, pw, compact }: { entry: MileageEntry; onDelete: (id: string) => void; pw: string; compact?: boolean }) {
   async function del() {
     await fetch("/api/admin/mileage", {
       method: "DELETE", headers: adminHeader(pw), body: JSON.stringify({ id: entry.id }),
@@ -245,20 +240,24 @@ function MileRow({ entry, onDelete, pw }: { entry: MileageEntry; onDelete: (id: 
   }
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 8, padding: "7px 10px",
-      borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12,
+      display: "flex", alignItems: "center", gap: 6, padding: "7px 10px",
+      borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: 12, minHeight: 35,
     }}>
-      <span style={{ color: "rgba(255,255,255,0.28)", width: 84, flexShrink: 0, fontSize: 10 }}>{entry.date}</span>
-      <span style={{ color: "rgba(255,255,255,0.65)", flex: 1 }}>{entry.description ?? "—"}</span>
-      <span style={{ color: `${PURPLE}0.85)`, fontWeight: 700, flexShrink: 0, width: 72, textAlign: "right" }}>
+      {!compact && <span style={{ color: "rgba(255,255,255,0.28)", width: 84, flexShrink: 0, fontSize: 10 }}>{entry.date}</span>}
+      <span style={{ color: "rgba(255,255,255,0.55)", flex: 1, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.description ?? "—"}</span>
+      <span style={{ color: `${PURPLE}0.85)`, fontWeight: 700, flexShrink: 0, width: 58, textAlign: "right", fontSize: 12 }}>
         {Number(entry.miles).toFixed(1)} mi
       </span>
       <button onClick={del}
-        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.18)", cursor: "pointer", fontSize: 14, padding: "0 4px", flexShrink: 0 }}>
+        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.18)", cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>
         ×
       </button>
     </div>
   );
+}
+
+function EmptyCell() {
+  return <div style={{ minHeight: 35, borderBottom: "1px solid rgba(255,255,255,0.02)" }} />;
 }
 
 // ── Month separator helpers ───────────────────────────────────────────────────
@@ -336,7 +335,7 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
   const [preview, setPreview]       = useState<ParsedRow[] | null>(null);
   const [previewAcct, setPreviewAcct] = useState<1 | 2>(1);
   const [importing, setImporting]   = useState(false);
-  const [finTab, setFinTab] = useState<"overview" | "acct1" | "acct2" | "taxes">("overview");
+  const [finTab, setFinTab] = useState<"overview" | "acct1" | "acct2" | "taxes" | "inc-list" | "exp-list">("overview");
   const [search, setSearch] = useState("");
 
   // Mileage add form state
@@ -473,6 +472,8 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
         {tabBtn("acct1", "Account 1")}
         {tabBtn("acct2", "Account 2")}
         {tabBtn("taxes", "Taxes / Sched C")}
+        {tabBtn("inc-list", "Income")}
+        {tabBtn("exp-list", "Expenses")}
       </div>
 
       {/* YTD summary strip */}
@@ -643,91 +644,129 @@ export function FinanceTab({ pw, transactions, mileage, onTransactionsChange, on
         );
       })()}
 
-      {/* Income / Expense columns */}
-      {finTab === "overview" && <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+      {/* Date-aligned three-column view */}
+      {finTab === "overview" && (() => {
+        const allDates = [...new Set([
+          ...income.map(t => t.date),
+          ...expense.map(t => t.date),
+          ...mileage.map(m => m.date),
+        ])].sort((a, b) => b.localeCompare(a));
 
-        {/* Income */}
-        <div style={col}>
-          <div style={sectionLabel}>Income</div>
-          <div style={totalStyle(`${TEAL}0.9)`)}>
-            ${incomeYTD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        let lastMonth3 = "";
+
+        const colHead = (label: string, color: string) => (
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color, padding: "6px 10px" }}>{label}</div>
+        );
+
+        return (
+          <div style={col}>
+            {/* Upload / add controls */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <button onClick={() => fileRef1.current?.click()} style={{ background: `${TEAL}0.08)`, border: `1px solid ${TEAL}0.2)`, borderRadius: 8, color: `${TEAL}0.8)`, fontSize: 11, fontWeight: 700, padding: "6px 11px", cursor: "pointer" }}>↑ CSV — Acct 1</button>
+              <button onClick={() => fileRef2.current?.click()} style={{ background: `${TEAL}0.08)`, border: `1px solid ${TEAL}0.2)`, borderRadius: 8, color: `${TEAL}0.8)`, fontSize: 11, fontWeight: 700, padding: "6px 11px", cursor: "pointer" }}>↑ CSV — Acct 2</button>
+              <input ref={fileRef1} type="file" accept=".csv,.tsv,.txt" multiple onChange={handleFile(1)} style={{ display: "none" }} />
+              <input ref={fileRef2} type="file" accept=".csv,.tsv,.txt" multiple onChange={handleFile(2)} style={{ display: "none" }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 200px", gap: 8, marginBottom: 8 }}>
+              <AddRow type="income" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
+              <AddRow type="expense" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
+              {/* Mileage add */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input type="date" value={mDate} onChange={e => setMDate(e.target.value)} style={{ ...fieldStyle, flex: 1, fontSize: 11, padding: "6px 8px" }} />
+                  <input placeholder="Mi" value={mMiles} onChange={e => setMMiles(e.target.value)} onKeyDown={e => e.key === "Enter" && addMile()} type="number" min="0" step="0.1" style={{ ...fieldStyle, width: 52, fontSize: 11, padding: "6px 6px" }} />
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <input placeholder="Trip description" value={mDesc} onChange={e => setMDesc(e.target.value)} onKeyDown={e => e.key === "Enter" && addMile()} style={{ ...fieldStyle, flex: 1, fontSize: 11, padding: "6px 8px" }} />
+                  <button onClick={addMile} disabled={mBusy || !mMiles} style={{ background: `${PURPLE}0.12)`, border: `1px solid ${PURPLE}0.28)`, borderRadius: 8, color: `${PURPLE}0.9)`, fontSize: 11, fontWeight: 700, padding: "6px 10px", cursor: mBusy ? "not-allowed" : "pointer", flexShrink: 0, opacity: mBusy ? 0.5 : 1 }}>{mBusy ? "…" : "Add"}</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Column headers */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 200px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 4 }}>
+              {colHead("Income", `${TEAL}0.6)`)}
+              {colHead("Expenses", `${RED}0.6)`)}
+              {colHead("Mileage", `${PURPLE}0.6)`)}
+            </div>
+
+            {/* Date-aligned rows */}
+            <div style={{ maxHeight: 560, overflowY: "auto" }}>
+              {allDates.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, padding: 10 }}>No transactions yet.</p>}
+              {allDates.map(date => {
+                const month = date.slice(0, 7);
+                const showSep = month !== lastMonth3;
+                lastMonth3 = month;
+                const dayInc = income.filter(t => t.date === date);
+                const dayExp = expense.filter(t => t.date === date);
+                const dayMile = mileage.filter(m => m.date === date);
+                const mileTotal = dayMile.reduce((s, m) => s + Number(m.miles), 0);
+                const maxRows = Math.max(dayInc.length, dayExp.length, dayMile.length, 1);
+                const mc = monthColor(date);
+                const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+                return (
+                  <React.Fragment key={date}>
+                    {showSep && <MonthSeparator date={date} />}
+                    {/* Date label row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px 2px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: `${mc}0.5)`, width: 110, flexShrink: 0 }}>{dateLabel}</span>
+                      {dayMile.length > 1 && <span style={{ fontSize: 9, color: `${PURPLE}0.45)`, marginLeft: "auto" }}>{mileTotal.toFixed(1)} mi total</span>}
+                    </div>
+                    {/* Aligned rows */}
+                    {Array.from({ length: maxRows }).map((_, i) => (
+                      <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 200px" }}>
+                        <div>{dayInc[i]
+                          ? <TxRow compact tx={dayInc[i]} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
+                          : <EmptyCell />}
+                        </div>
+                        <div>{dayExp[i]
+                          ? <TxRow compact tx={dayExp[i]} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
+                          : <EmptyCell />}
+                        </div>
+                        <div>{dayMile[i]
+                          ? <MileRow compact entry={dayMile[i]} pw={pw} onDelete={id => onMileageChange(mileage.filter(x => x.id !== id))} />
+                          : <EmptyCell />}
+                        </div>
+                      </div>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-            <button onClick={() => fileRef1.current?.click()}
-              style={{
-                background: `${TEAL}0.08)`, border: `1px solid ${TEAL}0.2)`,
-                borderRadius: 8, color: `${TEAL}0.8)`, fontSize: 11, fontWeight: 700,
-                padding: "7px 12px", cursor: "pointer",
-              }}>
-              ↑ CSV — Acct 1
-            </button>
-            <button onClick={() => fileRef2.current?.click()}
-              style={{
-                background: `${TEAL}0.08)`, border: `1px solid ${TEAL}0.2)`,
-                borderRadius: 8, color: `${TEAL}0.8)`, fontSize: 11, fontWeight: 700,
-                padding: "7px 12px", cursor: "pointer",
-              }}>
-              ↑ CSV — Acct 2
-            </button>
-            <input ref={fileRef1} type="file" accept=".csv,.tsv,.txt" multiple onChange={handleFile(1)} style={{ display: "none" }} />
-            <input ref={fileRef2} type="file" accept=".csv,.tsv,.txt" multiple onChange={handleFile(2)} style={{ display: "none" }} />
+        );
+      })()}
+
+      {/* Income list tab */}
+      {finTab === "inc-list" && (
+        <div style={col}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+            <div style={sectionLabel}>All Income</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: `${TEAL}0.9)` }}>${incomeYTD.toLocaleString("en-US", { minimumFractionDigits: 2 })} YTD</div>
           </div>
           <AddRow type="income" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
-          <div style={{ maxHeight: 340, overflowY: "auto" }}>
+          <div style={{ maxHeight: 600, overflowY: "auto" }}>
             {income.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No income yet.</p>}
             <TxListWithSeparators list={income} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
           </div>
         </div>
+      )}
 
-        {/* Expenses */}
+      {/* Expense list tab */}
+      {finTab === "exp-list" && (
         <div style={col}>
-          <div style={sectionLabel}>Expenses</div>
-          <div style={totalStyle(`${RED}0.85)`)}>
-            ${expenseYTD.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+            <div style={sectionLabel}>All Expenses</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: `${RED}0.85)` }}>${expenseYTD.toLocaleString("en-US", { minimumFractionDigits: 2 })} YTD</div>
           </div>
-          <div style={{ marginBottom: 12, height: 34 }} /> {/* spacer to align with income button */}
           <AddRow type="expense" pw={pw} onAdd={t => onTransactionsChange([t, ...transactions])} />
-          <div style={{ maxHeight: 340, overflowY: "auto" }}>
+          <div style={{ maxHeight: 600, overflowY: "auto" }}>
             {expense.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No expenses yet.</p>}
             <TxListWithSeparators list={expense} pw={pw} onDelete={id => onTransactionsChange(transactions.filter(x => x.id !== id))} />
           </div>
         </div>
-      </div>}
-
-      {/* Mileage */}
-      {finTab === "overview" &&
-      <div style={{ ...col }}>
-        <div style={sectionLabel}>Mileage</div>
-        <div style={totalStyle(`${PURPLE}0.9)`)}>
-          {milesYTD.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi
-        </div>
-        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-          <input type="date" value={mDate} onChange={e => setMDate(e.target.value)}
-            style={{ ...fieldStyle, width: 130, flexShrink: 0 }} />
-          <input placeholder="Trip description" value={mDesc} onChange={e => setMDesc(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addMile()}
-            style={{ ...fieldStyle, flex: 1, minWidth: 120 }} />
-          <input placeholder="Miles" value={mMiles} onChange={e => setMMiles(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addMile()}
-            type="number" min="0" step="0.1"
-            style={{ ...fieldStyle, width: 90, flexShrink: 0 }} />
-          <button onClick={addMile} disabled={mBusy || !mMiles}
-            style={{
-              background: `${PURPLE}0.12)`, border: `1px solid ${PURPLE}0.28)`,
-              borderRadius: 8, color: `${PURPLE}0.9)`, fontSize: 12, fontWeight: 700,
-              padding: "7px 14px", cursor: mBusy ? "not-allowed" : "pointer", flexShrink: 0,
-              opacity: mBusy ? 0.5 : 1,
-            }}>
-            {mBusy ? "…" : "Add"}
-          </button>
-        </div>
-        <div style={{ maxHeight: 280, overflowY: "auto" }}>
-          {mileage.length === 0 && <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>No trips logged yet.</p>}
-          {mileage.map(m => (
-            <MileRow key={m.id} entry={m} pw={pw} onDelete={id => onMileageChange(mileage.filter(x => x.id !== id))} />
-          ))}
-        </div>
-      </div>}
+      )}
 
       {/* Taxes / Schedule C */}
       {finTab === "taxes" && (() => {
