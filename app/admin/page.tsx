@@ -14,7 +14,7 @@ import type { Booking, BlockedSlot } from "@/app/admin/types";
 const SESSION_KEY = "iwc_admin";
 const PW_KEY = "iwc_admin_pw";
 
-type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "settings" | "analytics" | "finance" | "chat";
+type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "completions" | "settings" | "analytics" | "finance" | "chat";
 
 interface GigCompletion {
   id: string;
@@ -209,6 +209,26 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportCompletionsCSV() {
+    const cols = ["Completed At", "Service Date", "Customer", "Worker Pre-fill", "Stars", "Customer Review", "Status"];
+    const rows = completions.map(c => [
+      new Date(c.completed_at).toLocaleDateString(),
+      c.bookings?.service_date ? formatDateFull(c.bookings.service_date) : "",
+      [c.bookings?.first_name, c.bookings?.last_name].filter(Boolean).join(" ") || "",
+      c.worker_notes,
+      c.customer_stars ?? "",
+      c.customer_review_text ?? "",
+      c.review_status,
+    ]);
+    const csv = [cols, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `simple-windows-completions-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!loggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
@@ -237,7 +257,8 @@ export default function AdminPage() {
     { id: "bookings", label: `Bookings${pending.length ? ` (${pending.length})` : ""}` },
     { id: "data",     label: `Data${batched.length ? ` (${batched.length})` : ""}` },
     { id: "ics",      label: "Import ICS" },
-    { id: "reviews",  label: `Reviews${pendingReviews.length ? ` (${pendingReviews.length})` : ""}` },
+    { id: "reviews",      label: `Reviews${pendingReviews.length ? ` (${pendingReviews.length})` : ""}` },
+    { id: "completions",  label: `Completions${completions.length ? ` (${completions.length})` : ""}` },
     { id: "settings",   label: "Settings" },
     { id: "analytics",  label: "Analytics" },
     { id: "finance",    label: "Finance" },
@@ -449,7 +470,7 @@ export default function AdminPage() {
                     </div>
 
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>
-                      <span style={{ color: "rgba(255,255,255,0.25)", marginRight: 6 }}>Worker:</span>
+                      <span style={{ color: "rgba(255,255,255,0.25)", marginRight: 6 }}>Review pre-fill:</span>
                       {c.worker_notes}
                     </div>
 
@@ -497,13 +518,72 @@ export default function AdminPage() {
                       </div>
                     )}
                     {c.review_status === "approved" && (
-                      <div style={{ fontSize: 10, color: "rgba(126,200,227,0.5)", marginTop: 8 }}>
-                        ✓ Approved — customer can now post to Google via their link
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+                        <span style={{ fontSize: 10, color: "rgba(126,200,227,0.5)" }}>✓ Approved</span>
+                        <a
+                          href={process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL ?? "https://search.google.com/local/writereview?placeid=PLACEHOLDER"}
+                          target="_blank" rel="noopener"
+                          style={{
+                            fontSize: 10, fontWeight: 700, color: "#fff", background: "#4285F4",
+                            borderRadius: 6, padding: "4px 10px", textDecoration: "none", letterSpacing: "0.03em",
+                          }}
+                        >
+                          Post to Google ↗
+                        </a>
                       </div>
                     )}
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Completions spreadsheet ── */}
+          {tab === "completions" && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{completions.length} completed gig{completions.length !== 1 ? "s" : ""}</span>
+                {completions.length > 0 && (
+                  <button onClick={exportCompletionsCSV}
+                    style={{
+                      background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)",
+                      borderRadius: 8, color: "#a78bfa", fontSize: 11, fontWeight: 700,
+                      padding: "6px 14px", cursor: "pointer",
+                    }}>
+                    ↓ Export CSV
+                  </button>
+                )}
+              </div>
+              {completions.length === 0 ? (
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>No completed gigs yet. They'll appear here after you tap "Mark Job Complete" in the worker app.</p>
+              ) : (
+                <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                        {["Completed", "Svc Date", "Customer", "Review Pre-fill", "Stars", "Status"].map(h => (
+                          <th key={h} style={S.hdr}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completions.map((c, i) => {
+                        const name = [c.bookings?.first_name, c.bookings?.last_name].filter(Boolean).join(" ") || "–";
+                        return (
+                          <tr key={c.id} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                            <td style={S.cell}>{new Date(c.completed_at).toLocaleDateString()}</td>
+                            <td style={S.cell}>{c.bookings?.service_date ? formatDateFull(c.bookings.service_date) : "–"}</td>
+                            <td style={{ ...S.cell, color: "white", fontWeight: 500 }}>{name}</td>
+                            <td style={{ ...S.cell, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.worker_notes}</td>
+                            <td style={{ ...S.cell, textAlign: "center" as const }}>{c.customer_stars ? "★".repeat(c.customer_stars) : "–"}</td>
+                            <td style={{ ...S.cell, color: c.review_status === "approved" ? "rgba(126,200,227,0.8)" : c.review_status === "rejected" ? "rgba(251,113,133,0.6)" : "rgba(255,255,255,0.3)", textTransform: "capitalize" as const }}>{c.review_status}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
