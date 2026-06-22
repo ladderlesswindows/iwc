@@ -8,7 +8,6 @@ import { SERVICE_AREAS } from "@/lib/serviceAreas";
 import { calcPrice } from "@/lib/constants";
 import type { Step } from "@/components/npc/types";
 
-// Same example sets as MapPanel
 const EXAMPLE_SETS: Record<number, string[]> = {
   1: ["1a","1b","1c","1d"],
   2: ["2a","2b","2d","2a"],
@@ -17,6 +16,15 @@ const EXAMPLE_SETS: Record<number, string[]> = {
 };
 
 const TEAL = "rgba(126,200,227,";
+
+const PILLS = [
+  "Instant booking",
+  "$2M insured",
+  "No minimum",
+  "25 yrs exp",
+  "Badged staff",
+  "Text updates",
+];
 
 interface Props {
   date: string; time: string; windowCount: number;
@@ -46,65 +54,49 @@ interface Props {
 
 type Phase = "idle" | "zip" | "npc";
 
+const STEP_ORDER: Step[] = ["location","timeslot","windows","contact"];
+
 export function MobileView(props: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef       = useRef<mapboxgl.Map | null>(null);
   const zipInputRef  = useRef<HTMLInputElement>(null);
 
-  const [phase, setPhase]         = useState<Phase>("idle");
-  const [zipInput, setZipInput]   = useState("");
-  const [zipError, setZipError]   = useState(false);
+  const [phase, setPhase]           = useState<Phase>("idle");
+  const [zipInput, setZipInput]     = useState("");
+  const [zipError, setZipError]     = useState(false);
   const [mobileStep, setMobileStep] = useState<Step>("location");
-  const [videoVisible, setVideoVisible] = useState(false);
+  const [pillIdx, setPillIdx]       = useState(0);
 
-  // ── Satellite map ──────────────────────────────────────────────────
+  // Satellite map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
-
     import("mapbox-gl").then(({ default: mapboxgl }) => {
       if (cancelled || !containerRef.current) return;
       mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
-
       const map = new mapboxgl.Map({
         container: containerRef.current!,
         style: "mapbox://styles/mapbox/satellite-v9",
         center: [-121.9900, 37.0050],
         zoom: 10.5,
-        pitch: 0,
-        bearing: 0,
         interactive: false,
         attributionControl: false,
       });
-
-      // SAVED — Aquarium intro flyTo:
-      // center: [-121.9018, 36.6182], zoom: 17.5, pitch: 65, bearing: -28
-      // map.flyTo({ center: [-121.9900, 37.0050], zoom: 10.5, ... });
-
       mapRef.current = map;
     });
-
-    return () => {
-      cancelled = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
+    return () => { cancelled = true; mapRef.current?.remove(); mapRef.current = null; };
   }, []);
 
-  // Show video once user hits "npc" phase at timeslot step
+  // Pill ticker (idle only)
   useEffect(() => {
-    if (mobileStep === "timeslot") setVideoVisible(true);
-    if (mobileStep === "windows" || mobileStep === "contact") setVideoVisible(false);
-  }, [mobileStep]);
+    if (phase !== "idle") return;
+    const id = setInterval(() => setPillIdx(i => (i + 1) % PILLS.length), 2800);
+    return () => clearInterval(id);
+  }, [phase]);
 
   function handleStepChange(s: Step) {
     setMobileStep(s);
     props.onStepChange(s);
-  }
-
-  function handleTapIdle() {
-    setPhase("zip");
-    setTimeout(() => zipInputRef.current?.focus(), 300);
   }
 
   function handleGo() {
@@ -116,81 +108,130 @@ export function MobileView(props: Props) {
     setPhase("npc");
   }
 
+  const stepIdx    = STEP_ORDER.indexOf(mobileStep);
   const minWindows = SERVICE_AREAS[props.selectedZip]?.minWindows ?? 1;
   const photoSet   = Math.min(4, Math.max(1, props.windowCount));
   const photos     = EXAMPLE_SETS[photoSet] ?? EXAMPLE_SETS[4];
 
+  // Sheet height: compact at windows step (photos visible above), tall otherwise
+  const sheetHeight = mobileStep === "windows" ? "44dvh" : "72dvh";
+
   return (
-    <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden" }}>
+    <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden", background: "#08080e" }}>
 
       {/* Satellite map */}
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
 
-      {/* Vignette */}
+      {/* Gradient overlay */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        background: "linear-gradient(to bottom, rgba(5,5,8,0.48) 0%, transparent 30%, transparent 50%, rgba(5,5,8,0.82) 100%)",
+        background: "linear-gradient(to bottom, rgba(5,5,8,0.6) 0%, transparent 28%, transparent 55%, rgba(5,5,8,0.92) 100%)",
       }} />
 
-      {/* ── IDLE phase — tap anywhere ── */}
-      {phase === "idle" && (
-        <div
-          onClick={handleTapIdle}
-          style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-        >
+      {/* ── IDLE ── */}
+      <AnimatePresence>
+        {phase === "idle" && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            style={{
-              background: "rgba(5,5,8,0.82)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
-              border: `1px solid ${TEAL}0.18)`,
-              borderRadius: 18,
-              padding: "22px 28px 18px",
-              textAlign: "center",
-            }}
+            key="idle"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.4 }}
+            onClick={() => { setPhase("zip"); setTimeout(() => zipInputRef.current?.focus(), 320); }}
+            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: "0 24px" }}
           >
-            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: `${TEAL}0.55)`, marginBottom: 6 }}>
-              ✦ Santa Cruz County
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: "rgba(255,255,255,0.94)", letterSpacing: "-0.02em", lineHeight: 1.1, marginBottom: 6 }}>
-              Simple Windows
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase", color: `${TEAL}0.5)`, marginBottom: 16 }}>
-              Instant Window Cleaning
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", letterSpacing: "0.04em" }}>
-              Tap to book
-            </div>
-          </motion.div>
-        </div>
-      )}
+            {/* Hero card */}
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                width: "100%", maxWidth: 320,
+                background: "rgba(5,5,8,0.84)",
+                backdropFilter: "blur(28px)",
+                WebkitBackdropFilter: "blur(28px)",
+                border: `1px solid ${TEAL}0.2)`,
+                borderRadius: 22,
+                padding: "26px 22px 20px",
+                textAlign: "center",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+              }}
+            >
+              <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.24em", textTransform: "uppercase", color: `${TEAL}0.55)`, marginBottom: 8 }}>
+                ✦ Santa Cruz County
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 800, color: "rgba(255,255,255,0.95)", letterSpacing: "-0.025em", lineHeight: 1.05, marginBottom: 4 }}>
+                Simple<br />Windows
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: `${TEAL}0.45)`, marginBottom: 20 }}>
+                Instant Window Cleaning
+              </div>
 
-      {/* ── ZIP phase — input slides up ── */}
+              {/* Differentiator pill — cycles */}
+              <div style={{ height: 28, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={pillIdx}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      background: `${TEAL}0.08)`,
+                      border: `1px solid ${TEAL}0.2)`,
+                      borderRadius: 20, padding: "5px 14px",
+                      fontSize: 11, fontWeight: 700, color: `${TEAL}0.85)`,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {PILLS[pillIdx]}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Book CTA */}
+              <motion.div
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: "0.12em", textTransform: "uppercase" }}
+              >
+                Tap to book
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── ZIP ── */}
       <AnimatePresence>
         {phase === "zip" && (
           <motion.div
-            initial={{ y: 120, opacity: 0 }}
+            key="zip"
+            initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 120, opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 280 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
             style={{
               position: "fixed", bottom: 0, left: 0, right: 0,
-              background: "rgba(8,8,16,0.94)",
-              backdropFilter: "blur(24px)",
-              WebkitBackdropFilter: "blur(24px)",
+              background: "rgba(8,8,16,0.96)",
+              backdropFilter: "blur(28px)",
+              WebkitBackdropFilter: "blur(28px)",
               borderTop: `1px solid ${TEAL}0.14)`,
-              borderRadius: "20px 20px 0 0",
-              padding: "20px 22px 36px",
-              zIndex: 20,
+              borderRadius: "22px 22px 0 0",
+              padding: "18px 22px 40px",
+              zIndex: 30,
             }}
           >
-            <div style={{ width: 36, height: 3, borderRadius: 2, background: `${TEAL}0.28)`, margin: "0 auto 18px" }} />
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: `${TEAL}0.5)`, marginBottom: 10 }}>
-              Your ZIP code
+            <div style={{ width: 36, height: 3, borderRadius: 2, background: `${TEAL}0.25)`, margin: "0 auto 20px" }} />
+
+            <div style={{ fontSize: 18, fontWeight: 800, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.02em", marginBottom: 4 }}>
+              Where are you?
             </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 18 }}>
+              Enter your ZIP to check availability
+            </div>
+
             <div style={{ display: "flex", gap: 10 }}>
               <input
                 ref={zipInputRef}
@@ -198,7 +239,7 @@ export function MobileView(props: Props) {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={5}
-                placeholder="e.g. 95060"
+                placeholder="95060"
                 value={zipInput}
                 onChange={e => { setZipInput(e.target.value); setZipError(false); }}
                 onKeyDown={e => e.key === "Enter" && handleGo()}
@@ -206,14 +247,9 @@ export function MobileView(props: Props) {
                   flex: 1,
                   background: "rgba(255,255,255,0.06)",
                   border: `1px solid ${zipError ? "rgba(251,113,133,0.5)" : TEAL + "0.22)"}`,
-                  borderRadius: 12,
-                  color: "white",
-                  fontSize: 20,
-                  fontWeight: 700,
-                  letterSpacing: "0.1em",
-                  padding: "14px 16px",
-                  outline: "none",
-                  fontFamily: "inherit",
+                  borderRadius: 14, color: "white",
+                  fontSize: 22, fontWeight: 700, letterSpacing: "0.1em",
+                  padding: "14px 16px", outline: "none", fontFamily: "inherit",
                 }}
               />
               <button
@@ -221,26 +257,36 @@ export function MobileView(props: Props) {
                 style={{
                   background: `${TEAL}0.16)`,
                   border: `1px solid ${TEAL}0.35)`,
-                  borderRadius: 12,
+                  borderRadius: 14,
                   color: `${TEAL}0.95)`,
-                  fontSize: 15,
-                  fontWeight: 800,
-                  letterSpacing: "0.08em",
-                  padding: "14px 22px",
-                  cursor: "pointer",
-                  flexShrink: 0,
+                  fontSize: 16, fontWeight: 800, letterSpacing: "0.06em",
+                  padding: "0 24px", cursor: "pointer", flexShrink: 0,
                 }}
               >
                 GO
               </button>
             </div>
+
             {zipError && (
               <div style={{ fontSize: 11, color: "rgba(251,113,133,0.8)", marginTop: 8 }}>
                 That ZIP isn&apos;t in our service area yet.
               </div>
             )}
-            <div style={{ marginTop: 10, fontSize: 10, color: "rgba(255,255,255,0.2)" }}>
-              {Object.values(SERVICE_AREAS).map(a => a.name).join(" · ")}
+
+            <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {Object.values(SERVICE_AREAS).map(a => (
+                <button
+                  key={a.zip}
+                  onClick={() => { setZipInput(a.zip); setZipError(false); }}
+                  style={{
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8, color: "rgba(255,255,255,0.4)", fontSize: 10,
+                    padding: "5px 10px", cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  {a.zip} · {a.name}
+                </button>
+              ))}
             </div>
           </motion.div>
         )}
@@ -250,100 +296,113 @@ export function MobileView(props: Props) {
       <AnimatePresence>
         {phase === "npc" && (
           <>
-            {/* Video — top of screen at timeslot step */}
-            <AnimatePresence>
-              {videoVisible && (
-                <motion.div
-                  key="video"
-                  initial={{ opacity: 0, y: -12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.4 }}
-                  style={{
-                    position: "absolute", top: 12, left: 12, right: 12,
-                    zIndex: 12, borderRadius: 14,
-                    border: `1px solid ${TEAL}0.22)`,
-                    overflow: "hidden",
-                    boxShadow: "0 6px 28px rgba(0,0,0,0.55)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <video
-                    src="/videos/demo.mp4"
-                    autoPlay loop muted playsInline
-                    style={{ width: "100%", display: "block" }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Top logo badge */}
+            <motion.div
+              key="logo"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              style={{ position: "absolute", top: 14, left: 14, zIndex: 25, pointerEvents: "none" }}
+            >
+              <div style={{
+                background: "rgba(5,5,8,0.78)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                border: `1px solid ${TEAL}0.14)`,
+                borderRadius: 10, padding: "7px 11px 6px",
+              }}>
+                <div style={{ fontSize: 6, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: `${TEAL}0.5)`, marginBottom: 2 }}>✦ Santa Cruz</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.9)", letterSpacing: "-0.01em" }}>Simple Windows</div>
+              </div>
+            </motion.div>
 
-            {/* Photos card — windows step */}
+            {/* Step progress dots — top-right */}
+            <motion.div
+              key="progress"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              style={{ position: "absolute", top: 20, right: 16, zIndex: 25, display: "flex", gap: 5, pointerEvents: "none" }}
+            >
+              {STEP_ORDER.map((s, i) => (
+                <div
+                  key={s}
+                  style={{
+                    width: i <= stepIdx ? 18 : 5,
+                    height: 5, borderRadius: 3,
+                    background: i <= stepIdx ? `${TEAL}0.7)` : "rgba(255,255,255,0.15)",
+                    transition: "width 0.3s ease, background 0.3s ease",
+                  }}
+                />
+              ))}
+            </motion.div>
+
+            {/* Photos overlay — visible at windows step, sits above sheet */}
             <AnimatePresence>
               {mobileStep === "windows" && (
                 <motion.div
                   key="photos"
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.3 }}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.28 }}
                   style={{
                     position: "absolute",
-                    top: "50%", left: "50%",
-                    transform: "translate(-50%, -58%)",
-                    zIndex: 12,
-                    width: "min(340px, 90vw)",
-                    background: "rgba(5,5,8,0.88)",
+                    bottom: "calc(44dvh + 12px)",
+                    left: "50%", transform: "translateX(-50%)",
+                    zIndex: 22,
+                    width: "min(300px, 88vw)",
+                    background: "rgba(5,5,8,0.9)",
                     backdropFilter: "blur(20px)",
                     WebkitBackdropFilter: "blur(20px)",
-                    border: `1px solid ${TEAL}0.2)`,
-                    borderRadius: 16,
-                    padding: "16px 14px",
+                    border: `1px solid ${TEAL}0.18)`,
+                    borderRadius: 16, padding: "12px 10px 10px",
+                    boxShadow: "0 -8px 32px rgba(0,0,0,0.4)",
                     pointerEvents: "none",
                   }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)", textAlign: "center", marginBottom: 10 }}>
-                    What counts as {photoSet} window{photoSet !== 1 ? "s" : ""}
+                  <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", textAlign: "center", marginBottom: 8 }}>
+                    {photoSet} window{photoSet !== 1 ? "s" : ""} looks like this
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
                     {photos.map((suffix, i) => (
-                      <div key={`${photoSet}-${i}`} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", aspectRatio: "4/3" }}>
+                      <div key={`${photoSet}-${i}`} style={{ borderRadius: 7, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)", aspectRatio: "4/3" }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/examples/example${suffix}.jpg`}
-                          alt={`${photoSet}-window example`}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                        />
+                        <img src={`/examples/example${suffix}.jpg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       </div>
                     ))}
                   </div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: `${TEAL}0.85)`, textAlign: "center", marginTop: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: `${TEAL}0.85)`, textAlign: "center", marginTop: 8, letterSpacing: "-0.01em" }}>
                     {props.windowCount} window{props.windowCount !== 1 ? "s" : ""} · ${calcPrice(props.windowCount, minWindows)}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* NPC panel — bottom sheet */}
+            {/* Bottom sheet */}
             <motion.div
-              key="npc"
-              initial={{ y: 60, opacity: 0 }}
+              key="sheet"
+              initial={{ y: 80, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0 }}
-              transition={{ type: "spring", damping: 30, stiffness: 280 }}
+              exit={{ y: 80, opacity: 0 }}
+              transition={{ type: "spring", damping: 32, stiffness: 300 }}
               style={{
                 position: "fixed",
                 bottom: 0, left: 0, right: 0,
-                height: mobileStep === "windows" ? "42dvh" : "72dvh",
-                background: "rgba(8,8,16,0.94)",
-                backdropFilter: "blur(24px)",
-                WebkitBackdropFilter: "blur(24px)",
+                height: sheetHeight,
+                background: "rgba(8,8,16,0.96)",
+                backdropFilter: "blur(28px)",
+                WebkitBackdropFilter: "blur(28px)",
                 borderTop: `1px solid rgba(255,255,255,0.07)`,
-                borderRadius: "18px 18px 0 0",
-                zIndex: 20,
+                borderRadius: "20px 20px 0 0",
+                zIndex: 24,
                 overflowY: "auto",
-                transition: "height 0.35s ease",
+                transition: "height 0.38s cubic-bezier(0.16,1,0.3,1)",
               }}
             >
+              {/* Sheet handle */}
+              <div style={{ width: 32, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.12)", margin: "10px auto 0" }} />
+
               <NPCWidget
                 date={props.date}
                 time={props.time}
@@ -381,28 +440,6 @@ export function MobileView(props: Props) {
           </>
         )}
       </AnimatePresence>
-
-      {/* Logo — top-left, always visible in npc phase */}
-      {phase === "npc" && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{ position: "absolute", top: 14, left: 14, zIndex: 11, pointerEvents: "none" }}
-        >
-          <div style={{
-            background: "rgba(5,5,8,0.72)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            border: `1px solid ${TEAL}0.12)`,
-            borderRadius: 10,
-            padding: "8px 12px 6px",
-          }}>
-            <div style={{ fontSize: 6, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: `${TEAL}0.55)`, marginBottom: 3 }}>✦ Santa Cruz</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.9)", letterSpacing: "-0.01em" }}>Simple Windows</div>
-          </div>
-        </motion.div>
-      )}
-
     </div>
   );
 }
