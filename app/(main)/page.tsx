@@ -274,7 +274,7 @@ export default function HomePage() {
                 WebkitBackdropFilter: "blur(28px)",
                 border: "1px solid rgba(126,200,227,0.18)",
                 borderRadius: 22,
-                padding: "36px 36px 32px",
+                padding: "28px clamp(18px, 5vw, 36px) 24px",
                 boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
               }}
             >
@@ -296,7 +296,7 @@ export default function HomePage() {
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 24, lineHeight: 1.6 }}>
                 * Minimums vary by distance — 1 window for Santa Cruz &amp; Live Oak, 2 windows for Capitola &amp; UCSC, 3 windows for Aptos, Soquel, Scotts Valley, Felton &amp; Pleasure Point.
               </div>
-              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <button
                   onClick={() => setRodeoModal(false)}
                   style={{
