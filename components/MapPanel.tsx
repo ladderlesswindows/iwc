@@ -978,10 +978,10 @@ function ZipSelector({ selectedZip, onZipChange, onGo }: { selectedZip: string; 
         <button
           onClick={onGo}
           style={{
-            background: "#ff0000",
-            border: "1px solid #ff0000",
+            background: "rgba(126,200,227,0.15)",
+            border: "1px solid rgba(126,200,227,0.35)",
             borderRadius: 8,
-            color: "white",
+            color: "rgba(126,200,227,0.95)",
             fontSize: 11,
             fontWeight: 800,
             letterSpacing: "0.1em",
