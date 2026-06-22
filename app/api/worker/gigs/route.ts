@@ -15,7 +15,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { address, phone, customer_name, notes, service_date, status } = body;
+  const { address, phone, customer_name, email, notes, service_date, status } = body;
 
   if (!address?.trim() || !phone?.trim()) {
     return NextResponse.json({ error: "address and phone required" }, { status: 400 });
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await db.from("bookings").insert({
     address: address.trim(),
     phone: phone.trim(),
+    email: email?.trim() || null,
     first_name: firstName,
     last_name: lastName,
     notes: notes?.trim() ?? null,

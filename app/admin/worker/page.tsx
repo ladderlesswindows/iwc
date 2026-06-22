@@ -38,6 +38,8 @@ function btnFillStyle(accent: string): React.CSSProperties {
   };
 }
 
+const NEW_GIG_BLANK = { name: "", phone: "", email: "", address: "", date: "", notes: "" };
+
 export default function WorkerPage() {
   const router = useRouter();
   const [pw, setPw]           = useState("");
@@ -49,6 +51,11 @@ export default function WorkerPage() {
   const [flagging, setFlagging] = useState<string | null>(null);
   const [reviewLinks, setReviewLinks] = useState<Record<string, string>>({});
   const [copied, setCopied]   = useState<string | null>(null);
+
+  // New Gig form
+  const [showNewGig, setShowNewGig] = useState(false);
+  const [newGig, setNewGig]         = useState(NEW_GIG_BLANK);
+  const [starting, setStarting]     = useState(false);
 
   useEffect(() => {
     const session = sessionStorage.getItem(SESSION_KEY);
@@ -66,6 +73,36 @@ export default function WorkerPage() {
       setBookings((data ?? []) as Booking[]);
     }
     setLoading(false);
+  }
+
+  async function handleStartNow() {
+    if (!newGig.address.trim() || !newGig.phone.trim() || starting) return;
+    setStarting(true);
+    const res = await fetch("/api/worker/gigs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer_name: newGig.name.trim() || undefined,
+        phone: newGig.phone.trim(),
+        email: newGig.email.trim() || undefined,
+        address: newGig.address.trim(),
+        notes: newGig.notes.trim() || undefined,
+        service_date: newGig.date || new Date().toISOString().slice(0, 10),
+        status: "pending",
+      }),
+    });
+    if (res.ok) {
+      const { id } = await res.json();
+      setNewGig(NEW_GIG_BLANK);
+      setShowNewGig(false);
+      await loadJobs(pw);
+      // Open End Gig form immediately for this new job, pre-filled with review note
+      if (id) {
+        setActiveGig(id);
+        setNotes(newGig.notes.trim());
+      }
+    }
+    setStarting(false);
   }
 
   async function handleCantMakeIt(id: string) {
@@ -129,6 +166,79 @@ export default function WorkerPage() {
         >
           Clock Out
         </button>
+      </div>
+
+      {/* New Gig */}
+      <div style={{ marginBottom: 20 }}>
+        {!showNewGig ? (
+          <button onClick={() => setShowNewGig(true)} style={{ ...btnFillStyle("rgba(126,200,227,0.85)"), width: "100%", fontSize: 13 }}>
+            + New Gig
+          </button>
+        ) : (
+          <div style={{ ...S.card, border: "1px solid rgba(126,200,227,0.25)" }}>
+            <div style={{ ...S.label, marginBottom: 12, color: "rgba(126,200,227,0.6)" }}>New Gig</div>
+
+            {[
+              { key: "name",    label: "Customer Name", placeholder: "Jane Smith",         type: "text" },
+              { key: "phone",   label: "Phone *",       placeholder: "(831) 555-0100",      type: "tel" },
+              { key: "email",   label: "Email",         placeholder: "jane@example.com",    type: "email" },
+              { key: "address", label: "Address *",     placeholder: "123 Ocean St, SC",    type: "text" },
+              { key: "date",    label: "Date",          placeholder: "Today if blank",       type: "date" },
+            ].map(({ key, label, placeholder, type }) => (
+              <div key={key} style={{ marginBottom: 10 }}>
+                <div style={S.label}>{label}</div>
+                <input
+                  type={type}
+                  placeholder={placeholder}
+                  value={newGig[key as keyof typeof newGig]}
+                  onChange={e => setNewGig(prev => ({ ...prev, [key]: e.target.value }))}
+                  style={{
+                    width: "100%", background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+                    color: "rgba(255,255,255,0.85)", fontSize: 12, padding: "9px 12px",
+                    fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            ))}
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={S.label}>Review Suggestion</div>
+              <textarea
+                placeholder="e.g. Cleaned 6 exterior windows in 45 min, same-day booking!"
+                value={newGig.notes}
+                onChange={e => setNewGig(prev => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+                style={{
+                  width: "100%", background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+                  color: "rgba(255,255,255,0.85)", fontSize: 12, padding: "10px 12px",
+                  resize: "vertical", fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                }}
+              />
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 4 }}>
+                Pre-fills the customer review page
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleStartNow}
+                disabled={!newGig.address.trim() || !newGig.phone.trim() || starting}
+                style={{
+                  ...btnFillStyle("rgba(126,200,227,0.9)"),
+                  opacity: (!newGig.address.trim() || !newGig.phone.trim() || starting) ? 0.4 : 1,
+                  cursor: (!newGig.address.trim() || !newGig.phone.trim() || starting) ? "not-allowed" : "pointer",
+                }}
+              >
+                {starting ? "Starting…" : "Start Now ▶"}
+              </button>
+              <button onClick={() => { setShowNewGig(false); setNewGig(NEW_GIG_BLANK); }} style={btnStyle("rgba(255,255,255,0.2)")}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Jobs list */}
@@ -236,7 +346,7 @@ export default function WorkerPage() {
             {!reviewUrl && (
               <div style={{ display: "flex", gap: 8 }}>
                 {!isExpanded && (
-                  <button onClick={() => { setActiveGig(job.id); setNotes(""); }} style={btnStyle("rgba(126,200,227,0.6)")}>
+                  <button onClick={() => { setActiveGig(job.id); setNotes(job.notes ?? ""); }} style={btnStyle("rgba(126,200,227,0.6)")}>
                     End Gig
                   </button>
                 )}

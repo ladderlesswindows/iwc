@@ -11,6 +11,7 @@ export interface Booking {
   window_count: number;
   total_price: number;
   needs_estimate: boolean;
+  notes: string | null;
   status: string;
 }
 

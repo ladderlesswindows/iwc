@@ -33,7 +33,7 @@ function SummaryContent() {
 
   const venmoLink = `venmo://paycharge?txn=pay&recipients=SimpleWindowCleaning&amount=${total}&note=Window+cleaning+${encodeURIComponent(date)}`;
 
-  async function completeBooking() {
+  async function completeBooking(openVenmo = false) {
     setSubmitting(true);
     setError("");
 
@@ -66,6 +66,8 @@ function SummaryContent() {
 
     const { id: bookingId } = await res.json();
     setSubmitting(false);
+
+    if (openVenmo) window.location.href = venmoLink;
 
     const nextParams = new URLSearchParams({
       firstName,
@@ -128,13 +130,14 @@ function SummaryContent() {
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, marginBottom: 12 }}>
             Pay now via Venmo to lock in your slot. Tap below — it opens the Venmo app pre-filled.
           </p>
-          <a
-            href={venmoLink}
-            className="book-btn w-full block text-center"
-            style={{ display: "block", textDecoration: "none" }}
+          <button
+            className="book-btn w-full"
+            onClick={() => completeBooking(true)}
+            disabled={submitting}
+            style={{ opacity: submitting ? 0.6 : 1 }}
           >
-            Pay ${total} on Venmo
-          </a>
+            {submitting ? "Saving…" : `Pay $${total} on Venmo`}
+          </button>
           <p style={{ color: "rgba(255,255,255,0.28)", fontSize: 10, textAlign: "center", marginTop: 8 }}>
             Venmo @SimpleWindowCleaning — or pay in person day-of
           </p>
@@ -145,18 +148,6 @@ function SummaryContent() {
           <p style={{ color: "#f87171", fontSize: 12, marginBottom: 10, textAlign: "center" }}>{error}</p>
         )}
 
-        <button
-          className="book-btn w-full"
-          onClick={completeBooking}
-          disabled={submitting}
-          style={{ opacity: submitting ? 0.6 : 1 }}
-        >
-          {submitting ? "Saving…" : "Complete Booking"}
-        </button>
-
-        <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, textAlign: "center", marginTop: 8 }}>
-          Saves your booking — no account required
-        </p>
       </main>
     </div>
   );
