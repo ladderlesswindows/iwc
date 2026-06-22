@@ -70,6 +70,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
   const [centeredX, setCenteredX]         = useState(() => Math.max(16, (window.innerWidth - CARD_W) / 2));
   const [cardMovedLeft, setCardMovedLeft]   = useState(false);
   const [slideshowClosed, setSlideshowClosed] = useState(false);
+  const [tickerIdx, setTickerIdx] = useState(0);
   const onZipChangeRef = useRef(onZipChange);
   const onGoRef = useRef(onGo);
   const onOpenRef = useRef(onOpen);
@@ -153,6 +154,23 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
     onWindowCountChange?.(min);
     initializedForZipRef.current = zip;
   }, [stepIdx, zip]);
+
+  // ── Differentiator ticker ────────────────────────────────────────
+  const DIFFERENTIATORS = [
+    "Real-time booking — confirmed the moment you tap",
+    "24/7 — text or web only, no voicemail, ever",
+    "$2M insured · claims handled so your homeowner's policy stays untouched",
+    "No minimum window count",
+    "Badged · background-checked on every single visit",
+    "Text alerts before arrival, at start, and when we're done",
+    "Affordable recurring service built for everyday families",
+    "25 years of professional window cleaning experience",
+  ];
+  useEffect(() => {
+    if (!videoTriggered || stepIdx > 1) return;
+    const id = setInterval(() => setTickerIdx(i => (i + 1) % DIFFERENTIATORS.length), 3800);
+    return () => clearInterval(id);
+  }, [videoTriggered, stepIdx]);
 
   // ── Init map ────────────────────────────────────────────────────
   useEffect(() => {
@@ -403,6 +421,46 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
               autoPlay loop muted playsInline
               style={{ width: "100%", display: "block", borderRadius: 11 }}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Differentiator ticker — below GO button, same lifespan as the video */}
+      <AnimatePresence>
+        {videoTriggered && stepIdx <= 1 && (
+          <motion.div
+            key="diff-ticker"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            style={{
+              position: "absolute", bottom: "5%", left: "10%",
+              pointerEvents: "none", zIndex: 10, width: 300,
+            }}
+          >
+            <div style={{
+              fontSize: 8, fontWeight: 700, letterSpacing: "0.2em",
+              textTransform: "uppercase", color: "rgba(126,200,227,0.4)",
+              marginBottom: 7,
+            }}>
+              Why Simple Windows
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={tickerIdx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.38, ease: "easeOut" }}
+                style={{
+                  fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.72)",
+                  lineHeight: 1.45, letterSpacing: "-0.01em",
+                }}
+              >
+                {DIFFERENTIATORS[tickerIdx]}
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
