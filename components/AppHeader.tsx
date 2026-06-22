@@ -43,7 +43,7 @@ export function AppHeader() {
             </span>
           </div>
           <span style={{ fontSize: 8, letterSpacing: "1.8px", color: "rgba(255,255,255,0.28)", textTransform: "uppercase", fontWeight: 500 }}>
-Window Cleaning · Santa Cruz
+Instant Window Cleaning
           </span>
         </div>
 

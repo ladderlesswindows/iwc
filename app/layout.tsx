@@ -12,7 +12,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Simple Windows — Window Cleaning Santa Cruz",
+  title: "Simple Windows — Instant Window Cleaning",
   description: "Book window cleaning instantly. Simple, fast, priced per window.",
   icons: { icon: "/icon.jpg" },
 };
