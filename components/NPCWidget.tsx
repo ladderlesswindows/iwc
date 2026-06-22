@@ -69,9 +69,7 @@ export function NPCWidget(props: Props) {
   } = props;
 
   // ── Panel state ───────────────────────────────────────────────────
-  const [skin, setSkin] = useState<Skin>(() =>
-    typeof window !== "undefined" && window.innerWidth < 768 ? "game" : "clean"
-  );
+  const [skin, setSkin] = useState<Skin>("clean");
   const [mode, setMode] = useState<ThemeMode>("dark");
   const [step, setStep] = useState<Step>("location");
 
