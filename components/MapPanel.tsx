@@ -388,7 +388,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
         )}
       </AnimatePresence>
 
-      {/* Video box — top-left, appears on first interaction, slides down when coverage alert shows, dismissed when any step is confirmed */}
+      {/* Video + ticker — one unified card, top-left */}
       <AnimatePresence>
         {videoTriggered && stepIdx <= 1 && (
           <motion.div
@@ -412,55 +412,39 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
               border: `1px solid ${TEAL}0.22)`,
               boxShadow: "0 8px 32px rgba(0,0,0,0.55)",
               background: "rgba(5,5,8,0.88)",
-              padding: 3,
+              overflow: "hidden",
               pointerEvents: "none",
             }}
           >
             <video
               src="/videos/demo.mp4"
               autoPlay loop muted playsInline
-              style={{ width: "100%", display: "block", borderRadius: 11 }}
+              style={{ width: "100%", display: "block" }}
             />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Differentiator ticker — below GO button, same lifespan as the video */}
-      <AnimatePresence>
-        {videoTriggered && stepIdx <= 1 && (
-          <motion.div
-            key="diff-ticker"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            style={{
-              position: "absolute", bottom: "5%", left: "10%",
-              pointerEvents: "none", zIndex: 10, width: 300,
-            }}
-          >
-            <div style={{
-              fontSize: 8, fontWeight: 700, letterSpacing: "0.2em",
-              textTransform: "uppercase", color: "rgba(126,200,227,0.4)",
-              marginBottom: 7,
-            }}>
-              Why Simple Windows
+            <div style={{ padding: "10px 12px 12px" }}>
+              <div style={{
+                fontSize: 7.5, fontWeight: 700, letterSpacing: "0.2em",
+                textTransform: "uppercase", color: "rgba(126,200,227,0.4)",
+                marginBottom: 6,
+              }}>
+                Why Simple Windows
+              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={tickerIdx}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  style={{
+                    fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.7)",
+                    lineHeight: 1.45, letterSpacing: "-0.01em",
+                  }}
+                >
+                  {DIFFERENTIATORS[tickerIdx]}
+                </motion.div>
+              </AnimatePresence>
             </div>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={tickerIdx}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.38, ease: "easeOut" }}
-                style={{
-                  fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.72)",
-                  lineHeight: 1.45, letterSpacing: "-0.01em",
-                }}
-              >
-                {DIFFERENTIATORS[tickerIdx]}
-              </motion.div>
-            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
