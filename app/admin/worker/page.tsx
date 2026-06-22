@@ -56,6 +56,7 @@ export default function WorkerPage() {
   const [showNewGig, setShowNewGig] = useState(false);
   const [newGig, setNewGig]         = useState(NEW_GIG_BLANK);
   const [starting, setStarting]     = useState(false);
+  const [scheduling, setScheduling] = useState(false);
 
   useEffect(() => {
     const session = sessionStorage.getItem(SESSION_KEY);
@@ -103,6 +104,30 @@ export default function WorkerPage() {
       }
     }
     setStarting(false);
+  }
+
+  async function handleSchedule() {
+    if (!newGig.address.trim() || !newGig.phone.trim() || scheduling) return;
+    setScheduling(true);
+    const res = await fetch("/api/worker/gigs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer_name: newGig.name.trim() || undefined,
+        phone: newGig.phone.trim(),
+        email: newGig.email.trim() || undefined,
+        address: newGig.address.trim(),
+        notes: newGig.notes.trim() || undefined,
+        service_date: newGig.date || new Date().toISOString().slice(0, 10),
+        status: "pending",
+      }),
+    });
+    if (res.ok) {
+      setNewGig(NEW_GIG_BLANK);
+      setShowNewGig(false);
+      await loadJobs(pw);
+    }
+    setScheduling(false);
   }
 
   async function handleCantMakeIt(id: string) {
@@ -221,14 +246,25 @@ export default function WorkerPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={handleSchedule}
+                disabled={!newGig.address.trim() || !newGig.phone.trim() || scheduling || starting}
+                style={{
+                  ...btnFillStyle("rgba(167,139,250,0.9)"),
+                  opacity: (!newGig.address.trim() || !newGig.phone.trim() || scheduling || starting) ? 0.4 : 1,
+                  cursor: (!newGig.address.trim() || !newGig.phone.trim() || scheduling || starting) ? "not-allowed" : "pointer",
+                }}
+              >
+                {scheduling ? "Scheduling…" : "Schedule"}
+              </button>
               <button
                 onClick={handleStartNow}
-                disabled={!newGig.address.trim() || !newGig.phone.trim() || starting}
+                disabled={!newGig.address.trim() || !newGig.phone.trim() || starting || scheduling}
                 style={{
                   ...btnFillStyle("rgba(126,200,227,0.9)"),
-                  opacity: (!newGig.address.trim() || !newGig.phone.trim() || starting) ? 0.4 : 1,
-                  cursor: (!newGig.address.trim() || !newGig.phone.trim() || starting) ? "not-allowed" : "pointer",
+                  opacity: (!newGig.address.trim() || !newGig.phone.trim() || starting || scheduling) ? 0.4 : 1,
+                  cursor: (!newGig.address.trim() || !newGig.phone.trim() || starting || scheduling) ? "not-allowed" : "pointer",
                 }}
               >
                 {starting ? "Starting…" : "Start Now ▶"}
