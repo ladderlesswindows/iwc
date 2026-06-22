@@ -408,6 +408,11 @@ export default function HomePage() {
                 }}
               />
 
+              {/* SMS consent */}
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", lineHeight: 1.6, marginBottom: 20, marginTop: -8 }}>
+                By providing your mobile number you agree to receive service notifications via SMS (dispatch updates, arrival alerts, job-complete confirmations). Msg &amp; data rates may apply. Reply STOP to opt out at any time.
+              </p>
+
               {/* Text benefits */}
               <div style={{ marginBottom: 28 }}>
                 {[
