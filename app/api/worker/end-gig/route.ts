@@ -51,7 +51,9 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     if (booking?.phone) {
-      sendReviewSMS(booking.phone, booking.first_name, review_url).catch(() => {});
+      const digits = booking.phone.replace(/\D/g, "");
+      const e164 = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : null;
+      if (e164) sendReviewSMS(e164, booking.first_name, review_url).catch(() => {});
     }
 
     return NextResponse.json({ review_token, review_url });
