@@ -15,7 +15,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { address, phone, customer_name, email, notes, service_date, status } = body;
+  const { address, phone, customer_name, email, notes, service_date, status, window_count, total_price } = body;
 
   if (!address?.trim() || !phone?.trim()) {
     return NextResponse.json({ error: "address and phone required" }, { status: 400 });
@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
     notes: notes?.trim() ?? null,
     service_date: service_date || new Date().toISOString().slice(0, 10),
     service_time: "09:00",
-    window_count: 0,
-    total_price: 0,
+    window_count: window_count ?? 0,
+    total_price: total_price ?? 0,
     status: status ?? "pending",
   }).select("id").single();
 
