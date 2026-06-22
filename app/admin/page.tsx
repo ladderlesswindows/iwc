@@ -57,9 +57,11 @@ export default function AdminPage() {
     byWindowCount: { windows: number; count: number }[];
   } | null>(null);
   const [promoEnabled, setPromoEnabled] = useState(false);
-  const [promoCodes, setPromoCodes]     = useState<{ code: string; notes: string | null }[]>([]);
+  const [promoCodes, setPromoCodes]     = useState<{ code: string; notes: string | null; discount_type: string; discount_value: number; active: boolean }[]>([]);
   const [newCode, setNewCode]           = useState("");
   const [newNotes, setNewNotes]         = useState("");
+  const [newDiscountType, setNewDiscountType] = useState<"percent" | "per_window" | "flat">("percent");
+  const [newDiscountValue, setNewDiscountValue] = useState("");
   const [addingCode, setAddingCode]     = useState(false);
 
   const pending = bookings.filter(b => b.status === "pending");
@@ -639,75 +641,133 @@ export default function AdminPage() {
                 <div style={{
                   background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
                   borderRadius: 12, padding: "16px 20px", marginBottom: 10,
-                  display: "flex", gap: 8, alignItems: "center",
+                  display: "flex", flexDirection: "column", gap: 10,
                 }}>
-                  <input
-                    placeholder="CODE"
-                    value={newCode}
-                    onChange={e => setNewCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
-                    onKeyDown={async e => { if (e.key === "Enter") { e.preventDefault(); (document.activeElement as HTMLElement)?.blur(); } }}
-                    style={{
-                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: 8, color: "white", fontSize: 13, fontWeight: 700,
-                      padding: "8px 12px", outline: "none", fontFamily: "inherit",
-                      letterSpacing: "0.08em", width: 140, flexShrink: 0,
-                    }}
-                  />
-                  <input
-                    placeholder="Notes (optional)"
-                    value={newNotes}
-                    onChange={e => setNewNotes(e.target.value)}
-                    style={{
-                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: 8, color: "rgba(255,255,255,0.75)", fontSize: 12,
-                      padding: "8px 12px", outline: "none", fontFamily: "inherit", flex: 1,
-                    }}
-                  />
-                  <button
-                    disabled={!newCode.trim() || addingCode}
-                    onClick={async () => {
-                      if (!newCode.trim()) return;
-                      setAddingCode(true);
-                      const stored = sessionStorage.getItem(PW_KEY) ?? "";
-                      const res = await fetch("/api/admin/promo-codes", {
-                        method: "POST",
-                        headers: { ...adminHeader(stored), "Content-Type": "application/json" },
-                        body: JSON.stringify({ code: newCode.trim(), notes: newNotes.trim() || null }),
-                      });
-                      if (res.ok) {
-                        setPromoCodes(prev => [{ code: newCode.trim().toUpperCase(), notes: newNotes.trim() || null }, ...prev]);
-                        setNewCode(""); setNewNotes("");
-                      }
-                      setAddingCode(false);
-                    }}
-                    style={{
-                      padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      background: newCode.trim() ? "#a78bfa" : "rgba(167,139,250,0.1)",
-                      color: newCode.trim() ? "#08080e" : "rgba(167,139,250,0.35)",
-                      border: "1px solid rgba(167,139,250,0.25)",
-                      cursor: newCode.trim() ? "pointer" : "not-allowed", flexShrink: 0,
-                    }}
-                  >
-                    {addingCode ? "Adding…" : "Add"}
-                  </button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      placeholder="CODE"
+                      value={newCode}
+                      onChange={e => setNewCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
+                      style={{
+                        background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 8, color: "white", fontSize: 13, fontWeight: 700,
+                        padding: "8px 12px", outline: "none", fontFamily: "inherit",
+                        letterSpacing: "0.08em", width: 130, flexShrink: 0,
+                      }}
+                    />
+                    <input
+                      placeholder="Notes (optional)"
+                      value={newNotes}
+                      onChange={e => setNewNotes(e.target.value)}
+                      style={{
+                        background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 8, color: "rgba(255,255,255,0.75)", fontSize: 12,
+                        padding: "8px 12px", outline: "none", fontFamily: "inherit", flex: 1,
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select
+                      value={newDiscountType}
+                      onChange={e => setNewDiscountType(e.target.value as "percent" | "per_window" | "flat")}
+                      style={{
+                        background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 8, color: "rgba(255,255,255,0.75)", fontSize: 12,
+                        padding: "8px 12px", outline: "none", fontFamily: "inherit", flex: 1,
+                      }}
+                    >
+                      <option value="percent">% off total</option>
+                      <option value="per_window">$/window (extra only)</option>
+                      <option value="flat">$ off total</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder={newDiscountType === "percent" ? "50" : newDiscountType === "flat" ? "20" : "10"}
+                      value={newDiscountValue}
+                      onChange={e => setNewDiscountValue(e.target.value)}
+                      style={{
+                        background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 8, color: "white", fontSize: 13, fontWeight: 700,
+                        padding: "8px 12px", outline: "none", fontFamily: "inherit", width: 90, flexShrink: 0,
+                      }}
+                    />
+                    <button
+                      disabled={!newCode.trim() || !newDiscountValue || addingCode}
+                      onClick={async () => {
+                        if (!newCode.trim() || !newDiscountValue) return;
+                        setAddingCode(true);
+                        const stored = sessionStorage.getItem(PW_KEY) ?? "";
+                        const res = await fetch("/api/admin/promo-codes", {
+                          method: "POST",
+                          headers: { ...adminHeader(stored), "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            code: newCode.trim(),
+                            notes: newNotes.trim() || null,
+                            discount_type: newDiscountType,
+                            discount_value: Number(newDiscountValue),
+                          }),
+                        });
+                        if (res.ok) {
+                          setPromoCodes(prev => [{ code: newCode.trim().toUpperCase(), notes: newNotes.trim() || null, discount_type: newDiscountType, discount_value: Number(newDiscountValue), active: true }, ...prev]);
+                          setNewCode(""); setNewNotes(""); setNewDiscountValue("");
+                        }
+                        setAddingCode(false);
+                      }}
+                      style={{
+                        padding: "8px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        background: (newCode.trim() && newDiscountValue) ? "#a78bfa" : "rgba(167,139,250,0.1)",
+                        color: (newCode.trim() && newDiscountValue) ? "#08080e" : "rgba(167,139,250,0.35)",
+                        border: "1px solid rgba(167,139,250,0.25)",
+                        cursor: (newCode.trim() && newDiscountValue) ? "pointer" : "not-allowed", flexShrink: 0, fontFamily: "inherit",
+                      }}
+                    >
+                      {addingCode ? "Adding…" : "Add"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Code list */}
                 {promoCodes.length === 0 && (
                   <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, paddingLeft: 4 }}>No promo codes yet.</p>
                 )}
-                {promoCodes.map(pc => (
+                {promoCodes.map(pc => {
+                  const discountLabel = pc.discount_type === "percent" ? `-${pc.discount_value}%`
+                    : pc.discount_type === "flat" ? `-$${pc.discount_value}`
+                    : `$${pc.discount_value}/window`;
+                  return (
                   <div key={pc.code} style={{
-                    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                    background: "rgba(255,255,255,0.03)", border: `1px solid ${pc.active ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.03)"}`,
                     borderRadius: 10, padding: "12px 16px", marginBottom: 6,
                     display: "flex", alignItems: "center", gap: 12,
+                    opacity: pc.active ? 1 : 0.45,
                   }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "#a78bfa", letterSpacing: "0.08em", minWidth: 120 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "#a78bfa", letterSpacing: "0.08em", minWidth: 110 }}>
                       {pc.code}
                     </span>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", flex: 1 }}>
-                      {pc.notes || <span style={{ opacity: 0.4 }}>no notes</span>}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#86efac", minWidth: 90 }}>
+                      {discountLabel}
                     </span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", flex: 1 }}>
+                      {pc.notes || ""}
+                    </span>
+                    <button
+                      onClick={async () => {
+                        const stored = sessionStorage.getItem(PW_KEY) ?? "";
+                        await fetch("/api/admin/promo-codes", {
+                          method: "PATCH",
+                          headers: { ...adminHeader(stored), "Content-Type": "application/json" },
+                          body: JSON.stringify({ code: pc.code, active: !pc.active }),
+                        });
+                        setPromoCodes(prev => prev.map(c => c.code === pc.code ? { ...c, active: !c.active } : c));
+                      }}
+                      style={{
+                        background: "transparent", border: `1px solid ${pc.active ? "rgba(167,139,250,0.25)" : "rgba(255,255,255,0.1)"}`,
+                        borderRadius: 6, color: pc.active ? "rgba(167,139,250,0.6)" : "rgba(255,255,255,0.3)", fontSize: 11,
+                        padding: "4px 10px", cursor: "pointer", flexShrink: 0,
+                      }}
+                    >
+                      {pc.active ? "Disable" : "Enable"}
+                    </button>
                     <button
                       onClick={async () => {
                         const stored = sessionStorage.getItem(PW_KEY) ?? "";
@@ -724,7 +784,7 @@ export default function AdminPage() {
                         padding: "4px 10px", cursor: "pointer", flexShrink: 0,
                       }}
                     >
-                      Remove
+                      Delete
                     </button>
                   </div>
                 ))}

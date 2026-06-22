@@ -9,3 +9,26 @@ export function calcPrice(count: number, min: number): number {
   const extra = Math.max(0, count - min) * PRICE_PER_WINDOW_EXTRA;
   return base + extra;
 }
+
+// Apply a promo discount to a base total.
+// 'per_window' only reduces the rate on windows ABOVE the service-area minimum.
+export function applyPromo(
+  baseTotal: number,
+  windows: number,
+  minWindows: number,
+  discountType: "percent" | "per_window" | "flat",
+  discountValue: number
+): number {
+  if (discountType === "percent") {
+    return Math.round(baseTotal * (1 - discountValue / 100) * 100) / 100;
+  }
+  if (discountType === "flat") {
+    return Math.max(0, Math.round((baseTotal - discountValue) * 100) / 100);
+  }
+  if (discountType === "per_window") {
+    const minCost   = Math.min(windows, minWindows) * PRICE_PER_WINDOW;
+    const extraCost = Math.max(0, windows - minWindows) * discountValue;
+    return minCost + extraCost;
+  }
+  return baseTotal;
+}

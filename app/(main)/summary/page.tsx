@@ -6,8 +6,10 @@ import { motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { formatDate, formatTime, formatPhone } from "@/lib/availability";
-import { calcPrice } from "@/lib/constants";
+import { calcPrice, applyPromo } from "@/lib/constants";
 import { SERVICE_AREAS } from "@/lib/serviceAreas";
+
+type PromoDiscount = { code: string; discount_type: string; discount_value: number; notes: string | null };
 
 function SummaryContent() {
   const router = useRouter();
@@ -26,12 +28,38 @@ function SummaryContent() {
   const estimateDeadline = params.get("estimateDeadline") ?? "";
   const zip = params.get("zip") ?? "95060";
   const minWindows = SERVICE_AREAS[zip]?.minWindows ?? 1;
-  const total = calcPrice(windows, minWindows);
+  const baseTotal = calcPrice(windows, minWindows);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Promo code state
+  const [promoInput, setPromoInput] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState<PromoDiscount | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [checkingPromo, setCheckingPromo] = useState(false);
+
+  const total = promoDiscount
+    ? applyPromo(baseTotal, windows, minWindows, promoDiscount.discount_type as "percent" | "per_window" | "flat", promoDiscount.discount_value)
+    : baseTotal;
+
   const venmoLink = `venmo://paycharge?txn=pay&recipients=SimpleWindowCleaning&amount=${total}&note=Window+cleaning+${encodeURIComponent(date)}`;
+
+  async function applyPromoCode() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setCheckingPromo(true);
+    setPromoError("");
+    const res = await fetch(`/api/promo/validate?code=${encodeURIComponent(code)}`);
+    if (res.ok) {
+      const data = await res.json();
+      setPromoDiscount(data);
+      setPromoInput("");
+    } else {
+      setPromoError("Code not recognized.");
+    }
+    setCheckingPromo(false);
+  }
 
   async function completeBooking(openVenmo = false) {
     setSubmitting(true);
@@ -78,12 +106,18 @@ function SummaryContent() {
     router.push(`/booking/${bookingId}/updates?${nextParams.toString()}`);
   }
 
+  function discountLabel(d: PromoDiscount): string {
+    if (d.discount_type === "percent") return `-${d.discount_value}%`;
+    if (d.discount_type === "flat") return `-$${d.discount_value}`;
+    if (d.discount_type === "per_window") return `$${d.discount_value}/window`;
+    return "";
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader />
 
       <main className="flex-1 px-4 pt-4 pb-12" style={{ paddingTop: 80 }}>
-        {/* Back button */}
         <button
           className="flex items-center gap-1 mb-5"
           style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, background: "none", border: "none", cursor: "pointer", padding: 0 }}
@@ -103,7 +137,7 @@ function SummaryContent() {
         >
           <Row label="Date" value={formatDate(date)} />
           <Row label="Time" value={formatTime(time)} />
-          <Row label="Windows" value={`${windows} — $${total}`} />
+          <Row label="Windows" value={`${windows}`} />
           <Row label="Address" value={address} />
           {(firstName || lastName) && <Row label="Name" value={`${firstName} ${lastName}`.trim()} />}
           {phone && <Row label="Phone" value={formatPhone(phone)} />}
@@ -115,9 +149,71 @@ function SummaryContent() {
 
           <div className="flex justify-between items-center">
             <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 12 }}>Total due</span>
-            <span style={{ color: "white", fontSize: 20, fontWeight: 800 }}>${total}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {promoDiscount && (
+                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, textDecoration: "line-through" }}>${baseTotal}</span>
+              )}
+              <span style={{ color: promoDiscount ? "#86efac" : "white", fontSize: 20, fontWeight: 800 }}>${total}</span>
+            </div>
           </div>
+
+          {/* Applied promo badge */}
+          {promoDiscount && (
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 11, color: "#86efac", fontWeight: 700, letterSpacing: "0.06em" }}>
+                {promoDiscount.code} · {discountLabel(promoDiscount)}
+              </span>
+              <button
+                onClick={() => setPromoDiscount(null)}
+                style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              >
+                Remove
+              </button>
+            </div>
+          )}
         </motion.div>
+
+        {/* Promo code input */}
+        {!promoDiscount && (
+          <motion.div
+            className="glass-card p-4 mb-4"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 }}
+          >
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>Have a promo code?</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={promoInput}
+                onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                onKeyDown={e => e.key === "Enter" && applyPromoCode()}
+                placeholder="ENTER CODE"
+                style={{
+                  flex: 1, background: "rgba(255,255,255,0.05)",
+                  border: `1px solid ${promoError ? "rgba(251,113,133,0.5)" : "rgba(255,255,255,0.1)"}`,
+                  borderRadius: 8, color: "white", fontSize: 13, fontWeight: 700,
+                  padding: "9px 12px", outline: "none", fontFamily: "inherit", letterSpacing: "0.06em",
+                }}
+              />
+              <button
+                onClick={applyPromoCode}
+                disabled={!promoInput.trim() || checkingPromo}
+                style={{
+                  padding: "9px 18px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  background: promoInput.trim() ? "rgba(167,139,250,0.9)" : "rgba(167,139,250,0.1)",
+                  color: promoInput.trim() ? "#08080e" : "rgba(167,139,250,0.3)",
+                  border: "none", cursor: promoInput.trim() ? "pointer" : "not-allowed", flexShrink: 0,
+                  fontFamily: "inherit",
+                }}
+              >
+                {checkingPromo ? "…" : "Apply"}
+              </button>
+            </div>
+            {promoError && (
+              <p style={{ fontSize: 11, color: "rgba(251,113,133,0.8)", marginTop: 6 }}>{promoError}</p>
+            )}
+          </motion.div>
+        )}
 
         {/* Venmo CTA */}
         <motion.div
@@ -142,7 +238,6 @@ function SummaryContent() {
           </p>
         </motion.div>
 
-        {/* Complete booking */}
         {error && (
           <p style={{ color: "#f87171", fontSize: 12, marginBottom: 10, textAlign: "center" }}>{error}</p>
         )}
