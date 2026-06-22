@@ -75,10 +75,12 @@ export default function ReviewPage() {
     setSubmitting(false);
   }
 
-  function handlePostToGoogle() {
+  function handleCopy() {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+  }
+
+  function handleOpenGoogle() {
     window.open(GOOGLE_REVIEW_URL, "_blank", "noopener");
   }
 
@@ -187,24 +189,39 @@ export default function ReviewPage() {
           </div>
         )}
 
-        {/* Post to Google — available immediately after submission */}
+        {/* Post to Google — two explicit steps after submission */}
         {submitted && (
-          <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
-              onClick={handlePostToGoogle}
+              onClick={handleCopy}
               style={{
-                width: "100%", background: "rgba(126,200,227,0.12)",
-                border: "1px solid rgba(126,200,227,0.35)", borderRadius: 10,
-                color: "rgba(126,200,227,0.9)", fontSize: 13, fontWeight: 700,
+                width: "100%", borderRadius: 10, fontSize: 13, fontWeight: 700,
                 padding: "12px 0", cursor: "pointer", transition: "all 0.15s",
                 letterSpacing: "0.04em",
+                background: copied ? "rgba(134,239,172,0.12)" : "rgba(255,255,255,0.07)",
+                border: copied ? "1px solid rgba(134,239,172,0.4)" : "1px solid rgba(255,255,255,0.12)",
+                color: copied ? "#86efac" : "rgba(255,255,255,0.6)",
               }}
             >
-              {copied ? "✓ Text copied — just paste on Google!" : "Share on Google ↗"}
+              {copied ? "✓ Review text copied!" : "Step 1 — Copy my review text"}
+            </button>
+            <button
+              onClick={handleOpenGoogle}
+              disabled={!copied}
+              style={{
+                width: "100%", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                padding: "12px 0", cursor: copied ? "pointer" : "not-allowed",
+                transition: "all 0.15s", letterSpacing: "0.04em",
+                background: copied ? "rgba(126,200,227,0.14)" : "rgba(255,255,255,0.03)",
+                border: copied ? "1px solid rgba(126,200,227,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                color: copied ? "rgba(126,200,227,0.95)" : "rgba(255,255,255,0.2)",
+              }}
+            >
+              Step 2 — Open Google Reviews ↗
             </button>
             {copied && (
-              <p style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>
-                Your review text is copied — paste it when you get there.
+              <p style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.28)", margin: 0 }}>
+                Paste your text when Google opens — it&apos;s already in your clipboard.
               </p>
             )}
           </div>
