@@ -9,7 +9,7 @@ async function sendReviewSMS(to: string, firstName: string | null, reviewUrl: st
   if (!sid || !token || !from) return;
 
   const name = firstName ? `, ${firstName}` : "";
-  const body = `Hi${name}! Thanks for choosing Simple Windows today. How'd we do? Leave us a quick review (takes 30 sec) and we'll send you a discount on your next visit:\n${reviewUrl}`;
+  const body = `Hi${name}! Thanks for choosing Simple Windows today. We'd love to hear how it went — takes about 30 seconds:\n${reviewUrl}`;
 
   const client = twilio(sid, token);
   await client.messages.create({ body, from, to });

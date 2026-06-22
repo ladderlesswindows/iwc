@@ -3,22 +3,14 @@ import { assertAdmin } from "@/lib/admin";
 import { getServiceClient } from "@/lib/supabase";
 import twilio from "twilio";
 
-async function sendApprovalSMS(to: string, firstName: string | null, reviewUrl: string, discountCode: string | null) {
+async function sendApprovalSMS(to: string, firstName: string | null, reviewUrl: string) {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from  = process.env.TWILIO_FROM;
   if (!sid || !token || !from) return;
 
   const name = firstName ? `, ${firstName}` : "";
-  const googleUrl = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL;
-
-  let body = `Hi${name}! Your Simple Windows review is confirmed. `;
-  if (googleUrl) {
-    body += `Mind sharing it on Google too? Your text is pre-loaded:\n${reviewUrl}\n\n`;
-  }
-  if (discountCode) {
-    body += `As a thank-you, use code ${discountCode} for a discount on your next visit.`;
-  }
+  const body = `Hi${name}! We appreciate you reviewing Simple Windows. If you'd like to share on Google too, your text is ready to paste:\n${reviewUrl}`;
 
   const client = twilio(sid, token);
   await client.messages.create({ body, from, to });
@@ -67,18 +59,12 @@ export async function PATCH(req: NextRequest) {
         .single();
 
       if (completion?.customer_phone) {
-        const { data: settings } = await db
-          .from("site_settings")
-          .select("value")
-          .eq("key", "review_discount_code")
-          .single();
-
         const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ladderlesswindows.com";
         const reviewUrl = `${site}/review/${completion.review_token}`;
         const bookingData = completion.bookings as unknown as { first_name: string | null } | null;
         const firstName = bookingData?.first_name ?? null;
 
-        sendApprovalSMS(completion.customer_phone, firstName, reviewUrl, settings?.value ?? null).catch(() => {});
+        sendApprovalSMS(completion.customer_phone, firstName, reviewUrl).catch(() => {});
       }
     }
 
