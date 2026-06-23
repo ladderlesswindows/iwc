@@ -51,6 +51,7 @@ export default function AdminPage() {
   const [escalations, setEscalations] = useState<{ id: string; created_at: string; name: string | null; phone: string | null; summary: string | null; transcript: { role: string; content: string }[] | null }[]>([]);
 
   const [analytics, setAnalytics] = useState<{
+    company: { completedGigs: number; totalWindows: number; avgWindowsPerGig: number; avgDailyWindows: number; avgSale: number };
     summary: { totalBookings: number; bookings30d: number; bookings7d: number; totalRevenue: number; revenue30d: number; revenue7d: number; avgTicket: number; avgWindows: number };
     byZip: { zip: string; count: number; revenue: number }[];
     dailyTrend: { date: string; count: number }[];
@@ -897,6 +898,56 @@ export default function AdminPage() {
                   {analytics.summary.totalBookings === 0 && (
                     <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>No bookings yet — data will appear here once customers start booking.</p>
                   )}
+
+                  {/* Company Performance */}
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Company Performance</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+                      {[
+                        { label: "Gigs Completed",     value: analytics.company.completedGigs,                                    sub: "all time" },
+                        { label: "Total Windows",       value: analytics.company.totalWindows.toLocaleString(),                    sub: "cleaned" },
+                        { label: "Avg Windows / Gig",   value: analytics.company.avgWindowsPerGig || "—",                         sub: "per completed job" },
+                        { label: "Avg Daily Windows",   value: analytics.company.avgDailyWindows || "—",                          sub: "on days worked" },
+                        { label: "Avg Sale",            value: analytics.company.avgSale ? `$${analytics.company.avgSale}` : "—", sub: "completed gigs" },
+                        { label: "Avg Gig Length",      value: "—",  sub: "coming after TestFlight" },
+                        { label: "Avg Window Time",     value: "—",  sub: "coming after TestFlight" },
+                      ].map(c => (
+                        <div key={c.label} style={{
+                          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)",
+                          borderRadius: 10, padding: "14px 16px",
+                        }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 6 }}>{c.label}</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: c.value === "—" ? "rgba(255,255,255,0.15)" : "#34d399" }}>{c.value}</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 3 }}>{c.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Payroll — placeholder until TestFlight sync */}
+                  <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Payroll</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+                      {[
+                        { label: "Shift Clock",     sub: "total hours clocked in" },
+                        { label: "Gig Clock",       sub: "active work time" },
+                        { label: "Avg Window Time", sub: "your pace per window" },
+                        { label: "Drive Time",      sub: "coming later" },
+                      ].map(c => (
+                        <div key={c.label} style={{
+                          background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)",
+                          borderRadius: 10, padding: "14px 16px",
+                        }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 6 }}>{c.label}</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: "rgba(255,255,255,0.12)" }}>—</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 3 }}>{c.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", marginTop: 10 }}>
+                      Populates automatically once worker app data syncs via TestFlight.
+                    </div>
+                  </div>
                 </>
               )}
             </div>

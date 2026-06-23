@@ -10,6 +10,7 @@ interface BookingRow {
   window_count: number;
   total_price: number;
   address: string | null;
+  status: string;
 }
 
 export async function GET(req: NextRequest) {
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
   const supabase = getServiceClient();
   const { data, error } = await supabase
     .from("bookings")
-    .select("created_at, service_date, window_count, total_price, address")
+    .select("created_at, service_date, window_count, total_price, address, status")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -63,6 +64,16 @@ export async function GET(req: NextRequest) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 
+  // Company performance — completed gigs only
+  const completed = all.filter(b => b.status === "completed");
+  const totalWindowsCleaned = completed.reduce((s, b) => s + b.window_count, 0);
+  const avgWindowsCompleted = completed.length ? totalWindowsCleaned / completed.length : 0;
+  const avgCompletedSale    = completed.length ? completed.reduce((s, b) => s + Number(b.total_price), 0) / completed.length : 0;
+
+  // Average daily windows — windows spread across unique service days that had completions
+  const completedDays = new Set(completed.map(b => b.service_date ?? b.created_at.slice(0, 10)));
+  const avgDailyWindows = completedDays.size > 0 ? totalWindowsCleaned / completedDays.size : 0;
+
   // Window count distribution
   const windowDist: Record<number, number> = {};
   for (const b of all) {
@@ -73,6 +84,13 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => a.windows - b.windows);
 
   return NextResponse.json({
+    company: {
+      completedGigs:      completed.length,
+      totalWindows:       totalWindowsCleaned,
+      avgWindowsPerGig:   Math.round(avgWindowsCompleted * 10) / 10,
+      avgDailyWindows:    Math.round(avgDailyWindows * 10) / 10,
+      avgSale:            Math.round(avgCompletedSale * 100) / 100,
+    },
     summary: {
       totalBookings: all.length,
       bookings30d:   last30.length,
