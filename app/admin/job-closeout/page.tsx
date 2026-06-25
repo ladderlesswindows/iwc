@@ -302,6 +302,9 @@ export default function JobCloseout() {
     : 0;
   // Display add credit includes phantom retail for free windows (starts $20 higher on first add)
   const displayAddCredit = freeGiven * RETAIL_RATE + addCredit;
+  // Retail value of the original visit: what was paid + gift windows at retail
+  const originalVisitWindows = baseWindows + freeGiven;
+  const originalVisitRetailValue = baseTotal + freeGiven * RETAIL_RATE;
   // Freeze the right thermometer once qualifying adds are maxed out
   const addCap = Math.min(baseWindows, 5);
   const addsCapped = addCap > 0 && onsiteAdded >= addCap;
@@ -970,10 +973,10 @@ export default function JobCloseout() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                           <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                            Next visit · {totalWindows} win · retail value
+                            Next visit · {originalVisitWindows} win · retail value
                           </span>
                           <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>
-                            ${fmtD(totalWindows * RETAIL_RATE)}
+                            ${fmtD(originalVisitRetailValue)}
                           </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
