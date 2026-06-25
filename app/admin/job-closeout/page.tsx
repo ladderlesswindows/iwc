@@ -211,6 +211,9 @@ export default function JobCloseout() {
   const [depositCollected, setDepositCollected]     = useState(false);
   const [interiorDecision, setInteriorDecision]     = useState<InteriorDecision>(null);
   const [saving, setSaving]                         = useState(false);
+  const [showThankYouModal, setShowThankYouModal]   = useState(false);
+  const [lastSecondOpen, setLastSecondOpen]         = useState(false);
+  const [rateAgreed, setRateAgreed]                 = useState(false);
 
   // ── Beach video banner ──
   const videoRef                    = useRef<HTMLVideoElement>(null);
@@ -252,6 +255,9 @@ export default function JobCloseout() {
     setTookScreenLesson(false);
     setInteriorsEnabled(false);
     setInteriorsAdded(0);
+    setShowThankYouModal(false);
+    setLastSecondOpen(false);
+    setRateAgreed(false);
   }, [selectedId, bookings]);
 
   useEffect(() => {
@@ -350,7 +356,8 @@ export default function JobCloseout() {
     } finally {
       setSaving(false);
       setInteriorDecision(decision);
-      setStep(3);
+      setShowAgreementModal(false);
+      setStep(2);
     }
   }, [
     password, selectedId, baseWindows, baseTotal, onsiteAdded, freeGiven,
@@ -369,6 +376,7 @@ export default function JobCloseout() {
     setStep(0); setSelectedId("");
     setOnsiteAdded(0); setFreeGiven(0); setInteriorsEnabled(false); setInteriorsAdded(0);
     setRecurringAccepted(false); setDepositCollected(false); setInteriorDecision(null);
+    setShowThankYouModal(false); setLastSecondOpen(false); setRateAgreed(false);
   };
 
   if (!authed) return null;
@@ -458,7 +466,8 @@ export default function JobCloseout() {
   );
 
   // ─── STEP 1: Service Record Document ───────────────────────────────────
-  if (step === 1) {
+  if (step === 1 || step === 2) {
+    const isComplete      = step === 2;
     const canShowOffer    = onsiteAdded > 0 || freeGiven > 0;
     const depositRequired = onsiteAdded > 0;
     const canProceed      = canShowOffer
@@ -503,57 +512,101 @@ export default function JobCloseout() {
         `}</style>
 
         <WorkerBar>
-          <Stepper label="On-site added" value={onsiteAdded} onChange={setOnsiteAdded} />
-
-          {/* Screen Handling */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, paddingLeft: 18, borderLeft: "1px solid rgba(255,255,255,0.1)" }}>
-            <div
-              onClick={() => { setScreenHandlingEnabled(p => { if (p) { setScreenCount(0); setTookScreenLesson(false); } return !p; }); }}
-              style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}
-            >
-              <div style={{
-                width: 13, height: 13, borderRadius: 3, border: "1.5px solid rgba(255,255,255,0.28)",
-                background: screenHandlingEnabled ? "#60a5fa" : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              }}>
-                {screenHandlingEnabled && <span style={{ color: "white", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
-              </div>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
-                Screen Handling
-              </span>
-            </div>
-
-            {screenHandlingEnabled && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <button onClick={() => setScreenCount(prev => Math.max(0, prev - 1))} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
-                  <span style={{ fontSize: 19, fontWeight: 800, color: "white", minWidth: 18, textAlign: "center" }}>{screenCount}</span>
-                  <button onClick={() => setScreenCount(prev => prev + 1)} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
-                  <span style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em" }}>@ $2 ea</span>
-                  {screenCount > 0 && <span style={{ fontSize: 10, color: "#7EC8E3", fontWeight: 700 }}>${fmtD(screenTotal)}</span>}
+          {isComplete ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div
+                onClick={() => setLastSecondOpen(p => !p)}
+                style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}
+              >
+                <div style={{
+                  width: 13, height: 13, borderRadius: 3, border: "1.5px solid rgba(255,255,255,0.28)",
+                  background: lastSecondOpen ? "#60a5fa" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  {lastSecondOpen && <span style={{ color: "white", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
                 </div>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
+                  Last second additions
+                </span>
+              </div>
+              {lastSecondOpen && (
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                  <Stepper label="On-site added" value={onsiteAdded} onChange={setOnsiteAdded} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, paddingLeft: 18, borderLeft: "1px solid rgba(255,255,255,0.1)" }}>
+                    <div onClick={() => { setScreenHandlingEnabled(p => { if (p) { setScreenCount(0); setTookScreenLesson(false); } return !p; }); }} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}>
+                      <div style={{ width: 13, height: 13, borderRadius: 3, border: "1.5px solid rgba(255,255,255,0.28)", background: screenHandlingEnabled ? "#60a5fa" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {screenHandlingEnabled && <span style={{ color: "white", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                      </div>
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>Screen Handling</span>
+                    </div>
+                    {screenHandlingEnabled && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={() => setScreenCount(prev => Math.max(0, prev - 1))} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
+                        <span style={{ fontSize: 19, fontWeight: 800, color: "white", minWidth: 18, textAlign: "center" }}>{screenCount}</span>
+                        <button onClick={() => setScreenCount(prev => prev + 1)} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
+                        <span style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em" }}>@ $2 ea</span>
+                        {screenCount > 0 && <span style={{ fontSize: 10, color: "#7EC8E3", fontWeight: 700 }}>${fmtD(screenTotal)}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Stepper label="On-site added" value={onsiteAdded} onChange={setOnsiteAdded} />
 
+              {/* Screen Handling */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, paddingLeft: 18, borderLeft: "1px solid rgba(255,255,255,0.1)" }}>
                 <div
-                  onClick={() => setTookScreenLesson(p => !p)}
-                  style={{ display: "flex", alignItems: "flex-start", gap: 7, cursor: "pointer" }}
+                  onClick={() => { setScreenHandlingEnabled(p => { if (p) { setScreenCount(0); setTookScreenLesson(false); } return !p; }); }}
+                  style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}
                 >
                   <div style={{
-                    width: 11, height: 11, borderRadius: 2, border: "1.5px solid rgba(255,255,255,0.2)",
-                    background: tookScreenLesson ? "#10b981" : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                    width: 13, height: 13, borderRadius: 3, border: "1.5px solid rgba(255,255,255,0.28)",
+                    background: screenHandlingEnabled ? "#60a5fa" : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   }}>
-                    {tookScreenLesson && <span style={{ color: "white", fontSize: 7, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                    {screenHandlingEnabled && <span style={{ color: "white", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize: 8, color: tookScreenLesson ? "rgba(52,211,153,0.85)" : "rgba(255,255,255,0.3)", lineHeight: 1.4 }}>
-                    Took lesson · stages next visit
-                    {tookScreenLesson && screenCount > 0 && (
-                      <span style={{ color: "rgba(52,211,153,0.55)", display: "block" }}>removes screens from next visit + credits today</span>
-                    )}
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.4)" }}>
+                    Screen Handling
                   </span>
                 </div>
-              </>
-            )}
-          </div>
+
+                {screenHandlingEnabled && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <button onClick={() => setScreenCount(prev => Math.max(0, prev - 1))} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
+                      <span style={{ fontSize: 19, fontWeight: 800, color: "white", minWidth: 18, textAlign: "center" }}>{screenCount}</span>
+                      <button onClick={() => setScreenCount(prev => prev + 1)} style={{ width: 18, height: 18, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.22)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em" }}>@ $2 ea</span>
+                      {screenCount > 0 && <span style={{ fontSize: 10, color: "#7EC8E3", fontWeight: 700 }}>${fmtD(screenTotal)}</span>}
+                    </div>
+
+                    <div
+                      onClick={() => setTookScreenLesson(p => !p)}
+                      style={{ display: "flex", alignItems: "flex-start", gap: 7, cursor: "pointer" }}
+                    >
+                      <div style={{
+                        width: 11, height: 11, borderRadius: 2, border: "1.5px solid rgba(255,255,255,0.2)",
+                        background: tookScreenLesson ? "#10b981" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1,
+                      }}>
+                        {tookScreenLesson && <span style={{ color: "white", fontSize: 7, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                      </div>
+                      <span style={{ fontSize: 8, color: tookScreenLesson ? "rgba(52,211,153,0.85)" : "rgba(255,255,255,0.3)", lineHeight: 1.4 }}>
+                        Took lesson · stages next visit
+                        {tookScreenLesson && screenCount > 0 && (
+                          <span style={{ color: "rgba(52,211,153,0.55)", display: "block" }}>removes screens from next visit + credits today</span>
+                        )}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Beach video — fills middle gap */}
           <div style={{ flex: 1, minWidth: 0, height: 54, overflow: "hidden", borderRadius: 8, position: "relative", margin: "0 8px" }}>
@@ -867,10 +920,12 @@ export default function JobCloseout() {
                     { label: "SUBTOTAL",     value: `$${fmtD(totalCharged)}` },
                     { label: `CODE ${appliedPromo.code}`, value: `-$${fmtD(promoDiscount)}` },
                   ] : []),
-                  { label: "TOTAL CHARGED",  value: `$${fmtD(adjustedTotal)}`, underline: true },
+                  ...(!isComplete ? [{ label: "TOTAL CHARGED", value: `$${fmtD(adjustedTotal)}`, underline: true }] : []),
                   { label: "AVG / WINDOW",   value: `$${fmtD(avg)}` },
                   { label: "RETAIL VALUE",   value: `$${fmtI(retailFull)}` },
                   ...(retailFull > totalRevenue ? [{ label: "YOUR SAVINGS", value: `$${fmtD(retailFull - totalRevenue)}`, valueColor: "#16a34a" }] : []),
+                  ...(isComplete && interiorsAdded > 0 ? [{ label: "INTERIORS ADDED", value: `${interiorsAdded} × $${ONSITE_RATE} = $${fmtD(interiorTotal)}` }] : []),
+                  ...(isComplete && screenCount > 0 ? [{ label: "SCREEN HANDLING", value: `${screenCount} × $${SCREEN_RATE} = $${fmtD(screenTotal)}` }] : []),
                 ] as Array<{ label: string; value: string; underline?: boolean; valueColor?: string }>).map(({ label, value, underline, valueColor }) => (
                   <SummaryRow key={label} label={label} value={value} underline={underline} valueColor={valueColor} />
                 )))}
@@ -1031,46 +1086,66 @@ export default function JobCloseout() {
                   </div>
                 </div>
 
-                {/* ── Interior add-on ── */}
-                <div style={{ padding: "6px 14px 8px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: interiorsEnabled ? 6 : 0 }}>
-                    <div
-                      onClick={() => { setInteriorsEnabled(p => { if (p) setInteriorsAdded(0); return !p; }); }}
-                      style={{
-                        width: 13, height: 13, borderRadius: 3,
-                        border: `1.5px solid ${interiorsEnabled ? "#1278A0" : "#B8DCE8"}`,
-                        background: interiorsEnabled ? "#1278A0" : "transparent",
-                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                        cursor: "pointer",
-                      }}
+                {/* ── Interior add-on (step 1) / Rate agreement (step 2) ── */}
+                {isComplete ? (
+                  <div style={{ padding: "6px 14px 8px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+                      onClick={() => setRateAgreed(p => !p)}
                     >
-                      {interiorsEnabled && <span style={{ color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
-                    </div>
-                    <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                      Add interior?
-                    </span>
-                  </label>
-                  {interiorsEnabled && (
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <button onClick={() => setInteriorsAdded(p => Math.max(0, p - 1))} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
-                        <span style={{ fontSize: 13, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{interiorsAdded}</span>
-                        <button onClick={() => setInteriorsAdded(p => p + 1)} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
-                        <span style={{ fontSize: 8, color: "#3AAAC4" }}>interior win · $12.50 ea <span style={{ textDecoration: "line-through", color: "#B0C8D4" }}>$15</span></span>
+                      <div style={{
+                        width: 13, height: 13, borderRadius: 3,
+                        border: `1.5px solid ${rateAgreed ? "#1278A0" : "#B8DCE8"}`,
+                        background: rateAgreed ? "#1278A0" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        {rateAgreed && <span style={{ color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
                       </div>
-                      <button
-                        onClick={() => setShowAgreementModal(true)}
+                      <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        I agree to the next visit rate shown above
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <div style={{ padding: "6px 14px 8px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: interiorsEnabled ? 6 : 0 }}>
+                      <div
+                        onClick={() => { setInteriorsEnabled(p => { if (p) setInteriorsAdded(0); return !p; }); }}
                         style={{
-                          background: "#1278A0", border: "none", borderRadius: 5,
-                          color: "#fff", fontSize: 8, fontWeight: 700, padding: "4px 10px",
-                          cursor: "pointer", letterSpacing: "0.06em",
+                          width: 13, height: 13, borderRadius: 3,
+                          border: `1.5px solid ${interiorsEnabled ? "#1278A0" : "#B8DCE8"}`,
+                          background: interiorsEnabled ? "#1278A0" : "transparent",
+                          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                          cursor: "pointer",
                         }}
                       >
-                        NEXT →
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        {interiorsEnabled && <span style={{ color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                      </div>
+                      <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                        Add interior?
+                      </span>
+                    </label>
+                    {interiorsEnabled && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <button onClick={() => setInteriorsAdded(p => Math.max(0, p - 1))} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
+                          <span style={{ fontSize: 13, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{interiorsAdded}</span>
+                          <button onClick={() => setInteriorsAdded(p => p + 1)} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
+                          <span style={{ fontSize: 8, color: "#3AAAC4" }}>interior win · $12.50 ea <span style={{ textDecoration: "line-through", color: "#B0C8D4" }}>$15</span></span>
+                        </div>
+                        <button
+                          onClick={() => setShowAgreementModal(true)}
+                          style={{
+                            background: "#1278A0", border: "none", borderRadius: 5,
+                            color: "#fff", fontSize: 8, fontWeight: 700, padding: "4px 10px",
+                            cursor: "pointer", letterSpacing: "0.06em",
+                          }}
+                        >
+                          NEXT →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1122,6 +1197,25 @@ export default function JobCloseout() {
             </div>
           </div>
         </div>
+
+        {/* Thank-you modal (step 2) */}
+        {showThankYouModal && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,47,72,0.88)", backdropFilter: "blur(8px)" }}>
+            <div style={{ background: "#FFFFFF", borderRadius: 18, padding: "32px 28px", maxWidth: 360, width: "calc(100vw - 48px)", textAlign: "center", position: "relative", boxShadow: "0 24px 64px rgba(10,47,72,0.55)" }}>
+              <button onClick={() => setShowThankYouModal(false)} style={{ position: "absolute", top: 14, right: 18, background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#0A2740", lineHeight: 1 }}>×</button>
+              <div style={{ fontSize: 42, marginBottom: 12 }}>🌊</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#0A2740", marginBottom: 8, letterSpacing: "-0.01em" }}>
+                Thank You!
+              </div>
+              <p style={{ fontSize: 13, color: "#3AAAC4", margin: "0 0 16px", lineHeight: 1.6 }}>
+                Your windows look amazing. We appreciate your business and look forward to seeing you again.
+              </p>
+              <p style={{ fontSize: 10, color: "#B0C8D4", margin: 0, lineHeight: 1.5 }}>
+                Simple Window Cleaning · ladderlesswindows.com
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Agreement modal */}
         {showAgreementModal && (
@@ -1180,22 +1274,43 @@ export default function JobCloseout() {
         )}
 
         <ConfirmBar>
-          <button
-            onClick={() => canProceed && saveAndAdvance(interiorsAdded > 0 ? "today" : "declined")}
-            disabled={!canProceed || saving}
-            style={{
-              width: "100%", padding: "21px",
-              background: canProceed ? "linear-gradient(135deg, #0A3D5C, #1278A0)" : "rgba(255,255,255,0.05)",
-              border: "none", borderRadius: 16,
-              fontSize: 18, fontWeight: 700,
-              color: canProceed ? "white" : "rgba(255,255,255,0.18)",
-              boxShadow: canProceed ? "0 4px 20px rgba(18,120,160,0.4)" : "none",
-              cursor: canProceed && !saving ? "pointer" : "default",
-              transition: "all 0.2s", letterSpacing: "0.01em",
-            }}
-          >
-            {saving ? "Saving…" : "Now Get to Work! →"}
-          </button>
+          {isComplete ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%" }}>
+              <button
+                onClick={() => setShowThankYouModal(true)}
+                style={{
+                  width: "100%", padding: "21px",
+                  background: "linear-gradient(135deg, #0A3D5C, #1278A0)",
+                  border: "none", borderRadius: 16,
+                  fontSize: 18, fontWeight: 700, color: "white",
+                  boxShadow: "0 4px 20px rgba(18,120,160,0.4)",
+                  cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.01em",
+                }}
+              >
+                It looks Great!
+              </button>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textAlign: "center" }}>
+                And I have 24 hours to report a Customer Satisfaction complaint!
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => canProceed && saveAndAdvance(interiorsAdded > 0 ? "today" : "declined")}
+              disabled={!canProceed || saving}
+              style={{
+                width: "100%", padding: "21px",
+                background: canProceed ? "linear-gradient(135deg, #0A3D5C, #1278A0)" : "rgba(255,255,255,0.05)",
+                border: "none", borderRadius: 16,
+                fontSize: 18, fontWeight: 700,
+                color: canProceed ? "white" : "rgba(255,255,255,0.18)",
+                boxShadow: canProceed ? "0 4px 20px rgba(18,120,160,0.4)" : "none",
+                cursor: canProceed && !saving ? "pointer" : "default",
+                transition: "all 0.2s", letterSpacing: "0.01em",
+              }}
+            >
+              {saving ? "Saving…" : "Now Get to Work! →"}
+            </button>
+          )}
         </ConfirmBar>
       </div>
     );
