@@ -1047,6 +1047,15 @@ export default function JobCloseout() {
                       </div>
                     )}
                   </div>
+
+                  {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
+                  {onsiteAdded > 0 && (
+                    <ThermometerChart
+                      avg={nextVisitEffectiveAvg}
+                      retailRate={RETAIL_RATE}
+                      tag="NEXT"
+                    />
+                  )}
                 </div>
 
                 {/* ── Interior add-on (step 1) / Rate agreement (step 2) ── */}
@@ -1111,14 +1120,6 @@ export default function JobCloseout() {
                 )}
               </div>
 
-              {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
-              {onsiteAdded > 0 && (
-                <ThermometerChart
-                  avg={nextVisitEffectiveAvg}
-                  retailRate={RETAIL_RATE}
-                  tag="NEXT"
-                />
-              )}
             </div>
 
             {/* ── Sign-Off Row ── */}
