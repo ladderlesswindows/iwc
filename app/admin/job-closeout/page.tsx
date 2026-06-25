@@ -289,8 +289,9 @@ export default function JobCloseout() {
     : 0;
   const adjustedTotal   = totalCharged - promoDiscount;
   const totalRevenue    = baseTotal + adjustedTotal;
+  const windowRevenue   = totalRevenue - screenTotal;
   const totalWindows = baseWindows + onsiteAdded + freeGiven + interiorsAdded;
-  const avg          = totalWindows > 0 ? totalRevenue / totalWindows : 0;
+  const avg          = totalWindows > 0 ? windowRevenue / totalWindows : 0;
   const retailFull   = totalWindows * RETAIL_RATE;
   const nextPrice        = onsiteAdded * avg;
   const nextVisitGross   = totalWindows * avg;
