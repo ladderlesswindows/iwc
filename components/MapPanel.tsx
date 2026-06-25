@@ -223,6 +223,27 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
           markersRef.current.push(marker);
         });
 
+        // Coming-soon locations — unclickable, same pulse style
+        const previewLocations: [number, number][] = [
+          [-121.6525, 37.1305], // Morgan Hill
+          [-121.5669, 37.0058], // Gilroy
+          [-121.4016, 36.8524], // Hollister
+        ];
+        previewLocations.forEach((lngLat) => {
+          const el = document.createElement("div");
+          el.style.cssText = [
+            "width:10px;height:10px;border-radius:50%;",
+            "background:rgba(126,200,227,0.75);",
+            "box-shadow:0 0 0 0 rgba(126,200,227,0.45);",
+            "animation:mapPulse 2.4s ease-out infinite;",
+            "cursor:default;pointer-events:none;",
+          ].join("");
+          const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat(lngLat)
+            .addTo(map);
+          markersRef.current.push(marker);
+        });
+
         setMapLoaded(true);
         setOverlaysVisible(true);
         // Clicking the map background (not the dots) opens the panel
@@ -379,7 +400,7 @@ export default function MapPanel({ step, selectedZip, date, time, windowCount, n
 
       {/* Slideshow — top-center at coverage-alert level */}
       <AnimatePresence>
-        {(stepIdx >= 5 || showSlideshow) && !slideshowClosed && (
+        {(stepIdx >= 4 || showSlideshow) && !slideshowClosed && (
           <div key="slideshow-wrap" style={{
             position: "absolute", top: 54, left: "50%", transform: "translateX(-50%)",
             width: "min(342px, 65%)", zIndex: 9, pointerEvents: "auto",

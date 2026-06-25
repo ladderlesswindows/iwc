@@ -26,7 +26,7 @@ export function getNextDays(n = 30): string[] {
   const days: string[] = [];
   const d = new Date();
   d.setHours(0, 0, 0, 0);
-  for (let i = 1; i <= n; i++) {
+  for (let i = 0; i <= n; i++) {
     const next = new Date(d);
     next.setDate(d.getDate() + i);
     days.push(next.toISOString().split("T")[0]);
@@ -57,13 +57,26 @@ export function buildSlotMap(
 ) {
   const map: Record<string, string[]> = {};
 
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
   for (const date of dates) {
     const blocked = new Set(
       dbRows
         .filter((r) => r.date === date && r.is_blocked)
         .map((r) => (r.time_slot ?? "").slice(0, 5))
     );
-    map[date] = SLOT_TIMES.filter((t) => !blocked.has(t));
+    let slots = SLOT_TIMES.filter((t) => !blocked.has(t));
+
+    if (date === todayStr) {
+      slots = slots.filter((t) => {
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m >= nowMinutes - 30;
+      });
+    }
+
+    map[date] = slots;
   }
   return map;
 }

@@ -73,6 +73,14 @@ function UpdatesContent() {
             </p>
           )}
         </motion.div>
+        <motion.video
+          src="/videos/ontheway.mp4"
+          autoPlay muted loop playsInline
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          style={{ width: 180, borderRadius: 10, marginTop: 28, opacity: 0.85 }}
+        />
       </div>
     );
   }

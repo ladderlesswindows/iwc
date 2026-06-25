@@ -1,3 +1,12 @@
+// Mask technician last name until first verified customer contact
+export function techDisplayName(fullName: string, revealed = false): string {
+  if (revealed) return fullName;
+  const parts = fullName.trim().split(" ");
+  if (parts.length < 2) return fullName;
+  const last = parts[parts.length - 1];
+  return [...parts.slice(0, -1), last[0] + "*".repeat(5)].join(" ");
+}
+
 export const PRICE_PER_WINDOW       = 22; // base rate (up to and including the minimum)
 export const PRICE_PER_WINDOW_EXTRA = 20; // each window above the minimum
 export const MIN_WINDOWS = 1;
