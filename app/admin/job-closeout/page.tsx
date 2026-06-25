@@ -214,16 +214,16 @@ export default function JobCloseout() {
 
   // ── Beach video banner ──
   const videoRef                    = useRef<HTMLVideoElement>(null);
-  const [videoY, setVideoY]         = useState(-100);
+  const [videoX, setVideoX]         = useState(100);
   const [videoTx, setVideoTx]       = useState("none");
   const [videoMuted, setVideoMuted] = useState(true);
 
   function startVideoSlide() {
     setVideoTx("none");
-    setVideoY(-100);
+    setVideoX(100);
     requestAnimationFrame(() => requestAnimationFrame(() => {
       setVideoTx("transform 10s linear");
-      setVideoY(0);
+      setVideoX(0);
       videoRef.current?.play().catch(() => {});
     }));
   }
@@ -565,7 +565,7 @@ export default function JobCloseout() {
               loop
               style={{
                 width: "100%", height: "100%", objectFit: "cover", display: "block",
-                transform: `translateY(${videoY}%)`,
+                transform: `translateX(${videoX}%)`,
                 transition: videoTx,
               }}
             />
