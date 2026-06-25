@@ -300,6 +300,16 @@ export default function JobCloseout() {
   const nextVisitEffectiveAvg = (nextVisitWindows + qualifyingAdds) > 0
     ? nextVisitOffer / (nextVisitWindows + qualifyingAdds)
     : 0;
+  // Freeze the right thermometer once qualifying adds are maxed out
+  const addCap = Math.min(baseWindows, 5);
+  const addsCapped = addCap > 0 && onsiteAdded >= addCap;
+  const capAddCredit = addCap * ONSITE_RATE;
+  const capNextVisitWindows = baseWindows + addCap;
+  const capNextVisitRetail  = capNextVisitWindows * RETAIL_RATE;
+  const capNextVisitOffer   = Math.max(20, Math.max(capNextVisitRetail * 0.5, capNextVisitRetail - (2 + capAddCredit)));
+  const capNextVisitEffectiveAvg = addCap > 0
+    ? capNextVisitOffer / (capNextVisitWindows + addCap)
+    : 0;
 
   const openPromoPanel = () => {
     setShowPromoPanel(p => !p);
@@ -1048,12 +1058,13 @@ export default function JobCloseout() {
                     )}
                   </div>
 
-                  {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
+                  {/* Right thermometer — next-visit effective avg, appears when adds > 0, freezes at qualifying cap */}
                   {onsiteAdded > 0 && (
                     <ThermometerChart
-                      avg={nextVisitEffectiveAvg}
+                      avg={addsCapped ? capNextVisitEffectiveAvg : nextVisitEffectiveAvg}
                       retailRate={RETAIL_RATE}
                       tag="NEXT"
+                      frozen={addsCapped}
                     />
                   )}
                 </div>
