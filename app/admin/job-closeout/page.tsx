@@ -291,34 +291,18 @@ export default function JobCloseout() {
   const totalWindows = baseWindows + onsiteAdded + freeGiven + interiorsAdded;
   const avg          = totalWindows > 0 ? windowRevenue / totalWindows : 0;
   const retailFull   = totalWindows * RETAIL_RATE;
-  const qualifyingAdds    = Math.min(onsiteAdded, Math.min(baseWindows, 5));
-  const addCredit         = qualifyingAdds * ONSITE_RATE;
+  // Next-visit pricing — simple and reconcilable, add credit cap re-added later
+  const addCredit         = onsiteAdded * ONSITE_RATE;
   const nextVisitDiscount = 2 + addCredit;
   const nextVisitWindows  = baseWindows + onsiteAdded + freeGiven;
   const nextVisitRetail   = nextVisitWindows * RETAIL_RATE;
-  // When no adds: cap next visit at "same price as today minus $2" so 1-win orders stay affordable
-  const nextVisitOfferBase = onsiteAdded === 0
-    ? Math.max(20, Math.min(baseTotal, nextVisitRetail) - 2)
-    : Math.max(20, Math.max(nextVisitRetail * 0.5, nextVisitRetail - nextVisitDiscount));
-  const nextVisitOffer = nextVisitOfferBase;
-  const nextVisitEffectiveAvg = (nextVisitWindows + qualifyingAdds) > 0
-    ? nextVisitOffer / (nextVisitWindows + qualifyingAdds)
-    : 0;
-  // Display add credit includes phantom retail for free windows (starts $20 higher on first add)
-  const displayAddCredit = freeGiven * RETAIL_RATE + addCredit;
-  // Retail value of the original visit: what was paid + gift windows at retail
-  const originalVisitWindows = baseWindows + freeGiven;
+  const nextVisitOffer    = onsiteAdded === 0
+    ? Math.max(20, baseTotal - 2)
+    : Math.max(20, nextVisitRetail - nextVisitDiscount);
+  const nextVisitEffectiveAvg = nextVisitWindows > 0 ? nextVisitOffer / nextVisitWindows : 0;
+  // Accounting values for the original visit
+  const originalVisitWindows     = baseWindows + freeGiven;
   const originalVisitRetailValue = baseTotal + freeGiven * RETAIL_RATE;
-  // Freeze the right thermometer once qualifying adds are maxed out
-  const addCap = Math.min(baseWindows, 5);
-  const addsCapped = addCap > 0 && onsiteAdded >= addCap;
-  const capAddCredit = addCap * ONSITE_RATE;
-  const capNextVisitWindows = baseWindows + addCap + freeGiven;
-  const capNextVisitRetail  = capNextVisitWindows * RETAIL_RATE;
-  const capNextVisitOffer   = Math.max(20, Math.max(capNextVisitRetail * 0.5, capNextVisitRetail - (2 + capAddCredit)));
-  const capNextVisitEffectiveAvg = addCap > 0
-    ? capNextVisitOffer / (capNextVisitWindows + addCap)
-    : 0;
 
   const openPromoPanel = () => {
     setShowPromoPanel(p => !p);
@@ -482,7 +466,7 @@ export default function JobCloseout() {
   if (step === 1 || step === 2) {
     const isComplete      = step === 2;
     const canShowOffer    = baseWindows > 0;
-    const depositRequired = canShowOffer && onsiteAdded > 0;
+    const depositRequired = false; // prepay logic removed; will re-add with add-credit cap
     const canProceed      = canShowOffer
       ? (recurringAccepted && (!depositRequired || depositCollected))
       : recurringAccepted;
@@ -975,52 +959,57 @@ export default function JobCloseout() {
                     {canShowOffer ? (
                       /* ── Next visit offer breakdown ── */
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                        {/* Top row: original value (no adds) or full retail (with adds) */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                           <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                            Next visit · {originalVisitWindows} win · retail value
+                            {onsiteAdded > 0
+                              ? `Next visit · ${nextVisitWindows} win · retail`
+                              : `Next visit · ${originalVisitWindows} win · retail value`}
                           </span>
                           <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>
-                            ${fmtD(originalVisitRetailValue)}
+                            ${fmtD(onsiteAdded > 0 ? nextVisitRetail : originalVisitRetailValue)}
                           </span>
                         </div>
+                        {/* Pre-book discount — always */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                           <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
                             Pre-book discount
                           </span>
                           <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−$2.00</span>
                         </div>
-                        {displayAddCredit > 0 && (
+                        {/* Free window credit — no adds only */}
+                        {freeGiven > 0 && onsiteAdded === 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                             <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                              {onsiteAdded > 0
-                                ? `Add credit · ${qualifyingAdds}×$${ONSITE_RATE}${freeGiven > 0 ? " + free win" : ""}`
-                                : "Free window credit"}
+                              Free window credit
                             </span>
-                            <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(displayAddCredit)}</span>
+                            <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(freeGiven * RETAIL_RATE)}</span>
                           </div>
                         )}
-                        {depositRequired && (
+                        {/* Add credit — with adds, simple $12.50 each */}
+                        {onsiteAdded > 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px dashed #B8DCE8" }}>
                             <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                              Prepay ${DEPOSIT}
+                              Add credit · {onsiteAdded}×${ONSITE_RATE}
                             </span>
-                            <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(DEPOSIT)}</span>
+                            <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(addCredit)}</span>
                           </div>
                         )}
+                        {/* Big number */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 5 }}>
                           <div>
                             <div style={{ fontSize: 7, color: "#0A2740", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.3 }}>
                               Next Visit Booked Now
                             </div>
                             <div style={{ fontSize: 6, color: "#3AAAC4", letterSpacing: "0.04em" }}>
-                              {depositRequired ? `$${DEPOSIT} deposit · balance at service` : "Pre-book · no deposit required"}
+                              Pre-book · no deposit required
                             </div>
                             <div style={{ fontSize: 6, color: "#B0C8D4", fontStyle: "italic", marginTop: 3 }}>
                               *valid 7 months
                             </div>
                           </div>
                           <div style={{ fontSize: 26, fontWeight: 900, color: "#0A3D5C", fontFamily: "Georgia,'Times New Roman',serif", lineHeight: 1 }}>
-                            ${fmtD(depositRequired ? balanceDue : nextVisitOffer)}
+                            ${fmtD(nextVisitOffer)}
                           </div>
                         </div>
 
@@ -1048,7 +1037,7 @@ export default function JobCloseout() {
                                 {tookScreenLesson ? "With Staging" : "With Screens"}
                               </span>
                               <div style={{ fontSize: 22, fontWeight: 900, color: "#0A3D5C", fontFamily: "Georgia,'Times New Roman',serif", lineHeight: 1 }}>
-                                ${fmtD(tookScreenLesson ? balanceDue - screenCredit : balanceDue + screenTotal)}
+                                ${fmtD(tookScreenLesson ? nextVisitOffer - screenCredit : nextVisitOffer + screenTotal)}
                               </div>
                             </div>
                           </div>
@@ -1071,13 +1060,12 @@ export default function JobCloseout() {
                     )}
                   </div>
 
-                  {/* Right thermometer — next-visit effective avg, appears when adds > 0, freezes at qualifying cap */}
+                  {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
                   {onsiteAdded > 0 && (
                     <ThermometerChart
-                      avg={addsCapped ? capNextVisitEffectiveAvg : nextVisitEffectiveAvg}
+                      avg={nextVisitEffectiveAvg}
                       retailRate={RETAIL_RATE}
                       tag="NEXT"
-                      frozen={addsCapped}
                     />
                   )}
                 </div>
