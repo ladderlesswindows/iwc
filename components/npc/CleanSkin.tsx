@@ -230,7 +230,15 @@ export function CleanSkin(props: SkinProps) {
           <CardLabel T={T} text="Windows" />
           <p style={{ fontSize:13, color:T.TEXT_DIM, marginBottom:0 }}>How many windows today? <span style={{ color:T.ACCENT }}>from $20/window</span></p>
           <Counter T={T} count={windowCount} min={SERVICE_AREAS[currentZip]?.minWindows ?? MIN_WINDOWS} onChange={onWindowCountChange} />
-          <AccentBtn T={T} label={`✓ Confirm ${windowCount} window${windowCount!==1?"s":""} — $${calcPrice(windowCount, SERVICE_AREAS[currentZip]?.minWindows ?? MIN_WINDOWS)}`} onClick={() => advance("contact")} />
+          <button
+            onClick={() => advance("contact")}
+            style={{ width:"100%", background:T.ACCENT, color:"#f9f9ff", border:"none", borderRadius:10, padding:"12px 16px", fontSize:13, fontWeight:700, cursor:"pointer", marginTop:12, transition:"opacity 0.15s", lineHeight:1.4 }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            <div>✓ Confirm {windowCount} EXTERIOR window{windowCount!==1?"s":""} — ${calcPrice(windowCount, SERVICE_AREAS[currentZip]?.minWindows ?? MIN_WINDOWS)}</div>
+            <div style={{ fontWeight:600, opacity:0.82 }}>+1 INTERIOR Window cleaned (free)</div>
+          </button>
           <div style={{ display:"flex", marginTop:8 }}>
             <GhostBtn T={T} label="← Back" onClick={() => advance("timeslot")} />
           </div>
