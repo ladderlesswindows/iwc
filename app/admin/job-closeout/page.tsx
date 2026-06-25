@@ -112,37 +112,34 @@ function ConfirmBar({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ThermometerChart({ avg, retailRate }: { avg: number; retailRate: number }) {
+function ThermometerChart({ avg, retailRate, tag, frozen }: { avg: number; retailRate: number; tag?: string; frozen?: boolean }) {
   const pos     = Math.min(1, Math.max(0, (avg / retailRate) ** 3));
   const posH    = `${(pos * 100).toFixed(2)}%`;
-  const fillClr = pos < 0.15 ? "#059669" : pos < 0.35 ? "#0D9488" : pos < 0.6 ? "#1278A0" : "#0A3D5C";
+  const fillClr = frozen ? "#7ECAD8" : pos < 0.15 ? "#059669" : pos < 0.35 ? "#0D9488" : pos < 0.6 ? "#1278A0" : "#0A3D5C";
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
-      width: 68, flexShrink: 0, padding: "8px 8px",
+      width: 58, flexShrink: 0, padding: "6px 6px",
       border: "1px solid #A8D8E8", borderRadius: 6, background: "linear-gradient(180deg,#EBF7FA 0%,#D8F0F8 100%)",
-      gap: 3,
+      gap: 2,
     }}>
       <span style={{ fontSize: 6, color: "#0A3D5C", fontFamily: "'Courier New',monospace", letterSpacing: "0.05em", opacity: 0.5 }}>$20</span>
-      <div style={{ flex: 1, width: "100%", minHeight: 100, position: "relative" }}>
-        <div style={{ position: "absolute", left: 4, top: 0, bottom: 0, width: 14, border: "1px solid #7ECAD8", borderRadius: 7, overflow: "hidden", background: "rgba(10,61,92,0.04)" }}>
+      <div style={{ flex: 1, width: "100%", minHeight: 90, position: "relative" }}>
+        <div style={{ position: "absolute", left: 3, top: 0, bottom: 0, width: 12, border: "1px solid #7ECAD8", borderRadius: 6, overflow: "hidden", background: "rgba(10,61,92,0.04)" }}>
           {[0.25, 0.5, 0.75].map(t => (
             <div key={t} style={{ position: "absolute", bottom: `${t * 100}%`, left: 0, right: 0, height: 1, background: "rgba(18,120,160,0.2)" }} />
           ))}
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: posH, background: fillClr, transition: "height 0.7s cubic-bezier(0.34,1.56,0.64,1)" }} />
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: posH, background: fillClr, transition: frozen ? "none" : "height 0.7s cubic-bezier(0.34,1.56,0.64,1)" }} />
         </div>
-        <div style={{
-          position: "absolute", bottom: posH, left: 22,
-          transform: "translateY(50%)",
-          zIndex: 5, lineHeight: 1,
-        }}>
-          <span style={{ fontSize: 14, fontWeight: 900, color: "#0A2740", fontFamily: "Georgia,'Times New Roman',serif", whiteSpace: "nowrap" }}>
+        <div style={{ position: "absolute", bottom: posH, left: 18, transform: "translateY(50%)", zIndex: 5, lineHeight: 1 }}>
+          <span style={{ fontSize: 12, fontWeight: 900, color: "#0A2740", fontFamily: "Georgia,'Times New Roman',serif", whiteSpace: "nowrap" }}>
             ${avg.toFixed(2)}
           </span>
-          <span style={{ fontSize: 6, color: "#1278A0", fontFamily: "'Courier New',monospace", marginLeft: 2 }}>/win</span>
+          <span style={{ fontSize: 5, color: "#1278A0", fontFamily: "'Courier New',monospace", marginLeft: 1 }}>/win</span>
         </div>
       </div>
       <span style={{ fontSize: 6, color: "#059669", fontFamily: "'Courier New',monospace", opacity: 0.7 }}>$0</span>
+      {tag && <span style={{ fontSize: 5, color: "#1278A0", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 1 }}>{tag}</span>}
     </div>
   );
 }
@@ -214,6 +211,7 @@ export default function JobCloseout() {
   const [showThankYouModal, setShowThankYouModal]   = useState(false);
   const [lastSecondOpen, setLastSecondOpen]         = useState(false);
   const [rateAgreed, setRateAgreed]                 = useState(false);
+  const [frozenAvg, setFrozenAvg]                   = useState(0);
 
   // ── Beach video banner ──
   const videoRef                    = useRef<HTMLVideoElement>(null);
@@ -299,6 +297,9 @@ export default function JobCloseout() {
   const nextVisitWindows  = baseWindows + onsiteAdded;
   const nextVisitRetail   = nextVisitWindows * RETAIL_RATE;
   const nextVisitOffer    = Math.max(20, Math.max(nextVisitRetail * 0.5, nextVisitRetail - nextVisitDiscount));
+  const nextVisitEffectiveAvg = (nextVisitWindows + qualifyingAdds) > 0
+    ? nextVisitOffer / (nextVisitWindows + qualifyingAdds)
+    : 0;
 
   const openPromoPanel = () => {
     setShowPromoPanel(p => !p);
@@ -347,6 +348,7 @@ export default function JobCloseout() {
       console.error(e);
     } finally {
       setSaving(false);
+      setFrozenAvg(avg);
       setInteriorDecision(decision);
       setShowAgreementModal(false);
       setStep(2);
@@ -851,14 +853,14 @@ export default function JobCloseout() {
             </div>
 
             {/* ── 2-column: Service Summary | Offer Box ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid #D8EFF6" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 3fr", borderBottom: "1px solid #D8EFF6" }}>
 
               {/* Service Summary */}
-              <div style={{ padding: "10px 16px", borderRight: "1px solid #D8EFF6" }}>
+              <div style={{ padding: "8px 10px", borderRight: "1px solid #D8EFF6" }}>
                 <div style={{ fontSize: 7, letterSpacing: "0.18em", color: "#1278A0", fontWeight: 700, textTransform: "uppercase", marginBottom: 7, paddingBottom: 4, borderBottom: "1px solid #D8EFF6" }}>
                   Service Summary
                 </div>
-                <SummaryRow label="WINDOWS ORDERED" value={`${baseWindows} exterior`} />
+                <SummaryRow label="ORDERED" value={`${baseWindows} ext`} />
                 <div style={{ paddingLeft: 4, paddingBottom: 4, borderBottom: "1px solid rgba(58,170,196,0.15)", marginBottom: 1 }}>
                   <span style={{ fontSize: 8, color: "#3AAAC4", fontStyle: "italic", letterSpacing: "0.04em" }}>
                     Prepaid online · ${fmtD(baseTotal)}
@@ -866,8 +868,8 @@ export default function JobCloseout() {
                 </div>
                 {onsiteAdded > 0 && (
                   <SummaryRow
-                    label="ADDED ON-SITE"
-                    value={fullPriceAdds > 0 ? `${discountedAdds} at $${ONSITE_RATE} · ${fullPriceAdds} at $${RETAIL_RATE}` : `${onsiteAdded} at $${ONSITE_RATE} each`}
+                    label="ON-SITE"
+                    value={fullPriceAdds > 0 ? `${discountedAdds}@$${ONSITE_RATE} · ${fullPriceAdds}@$${RETAIL_RATE}` : `${onsiteAdded} @ $${ONSITE_RATE}`}
                   />
                 )}
 
@@ -893,7 +895,7 @@ export default function JobCloseout() {
 
                 {screenCount > 0 && (
                   <div style={{ padding: "4px 0", borderBottom: "1px solid #EBF5FA" }}>
-                    <SummaryRow label="SCREEN HANDLING" value={`${screenCount} × $${SCREEN_RATE} = $${fmtD(screenTotal)}`} />
+                    <SummaryRow label="SCREENS" value={`${screenCount} × $${SCREEN_RATE} = $${fmtD(screenTotal)}`} />
                     {tookScreenLesson && (
                       <div style={{ paddingLeft: 4, paddingBottom: 2 }}>
                         <span style={{ fontSize: 7, color: "#059669", fontStyle: "italic", letterSpacing: "0.04em" }}>
@@ -905,17 +907,17 @@ export default function JobCloseout() {
                 )}
 
                 {(([
-                  { label: "TOTAL WINDOWS",  value: String(totalWindows) },
+                  { label: "TOTAL WIN",  value: String(totalWindows) },
                   ...(appliedPromo ? [
                     { label: "SUBTOTAL",     value: `$${fmtD(totalCharged)}` },
                     { label: `CODE ${appliedPromo.code}`, value: `-$${fmtD(promoDiscount)}` },
                   ] : []),
-                  ...(!isComplete ? [{ label: "TOTAL CHARGED", value: `$${fmtD(adjustedTotal)}`, underline: true }] : []),
-                  { label: "AVG / WINDOW",   value: `$${fmtD(avg)}` },
-                  { label: "RETAIL VALUE",   value: `$${fmtI(retailFull)}` },
-                  ...(retailFull > totalRevenue ? [{ label: "YOUR SAVINGS", value: `$${fmtD(retailFull - totalRevenue)}`, valueColor: "#16a34a" }] : []),
-                  ...(isComplete && interiorsAdded > 0 ? [{ label: "INTERIORS ADDED", value: `${interiorsAdded} × $${ONSITE_RATE} = $${fmtD(interiorTotal)}` }] : []),
-                  ...(isComplete && screenCount > 0 ? [{ label: "SCREEN HANDLING", value: `${screenCount} × $${SCREEN_RATE} = $${fmtD(screenTotal)}` }] : []),
+                  ...(!isComplete ? [{ label: "CHARGED", value: `$${fmtD(adjustedTotal)}`, underline: true }] : []),
+                  { label: "AVG/WIN",   value: `$${fmtD(avg)}` },
+                  { label: "RETAIL",   value: `$${fmtI(retailFull)}` },
+                  ...(retailFull > totalRevenue ? [{ label: "SAVED", value: `$${fmtD(retailFull - totalRevenue)}`, valueColor: "#16a34a" }] : []),
+                  ...(isComplete && interiorsAdded > 0 ? [{ label: "INTERIORS", value: `${interiorsAdded} × $${ONSITE_RATE} = $${fmtD(interiorTotal)}` }] : []),
+                  ...(isComplete && screenCount > 0 ? [{ label: "SCREENS", value: `${screenCount} × $${SCREEN_RATE} = $${fmtD(screenTotal)}` }] : []),
                 ] as Array<{ label: string; value: string; underline?: boolean; valueColor?: string }>).map(({ label, value, underline, valueColor }) => (
                   <SummaryRow key={label} label={label} value={value} underline={underline} valueColor={valueColor} />
                 )))}
@@ -934,9 +936,14 @@ export default function JobCloseout() {
                 </div>
 
                 {/* Slide body */}
-                <div style={{ padding: "10px 12px", background: "#F0F9FC", display: "flex", gap: 10, alignItems: "stretch" }}>
-                  {/* Thermometer box */}
-                  <ThermometerChart avg={avg} retailRate={RETAIL_RATE} />
+                <div style={{ padding: "10px 12px", background: "#F0F9FC", display: "flex", gap: 8, alignItems: "stretch" }}>
+                  {/* Left thermometer — today's avg, freezes at step 2 */}
+                  <ThermometerChart
+                    avg={isComplete ? frozenAvg : avg}
+                    retailRate={RETAIL_RATE}
+                    tag="TODAY"
+                    frozen={isComplete}
+                  />
 
                   {/* Content box */}
                   <div style={{ flex: 1, border: "1px solid #B8DCE8", borderRadius: 6, background: "#FFFFFF", padding: "8px 10px", display: "flex", flexDirection: "column", gap: 0 }}>
@@ -1103,6 +1110,15 @@ export default function JobCloseout() {
                   </div>
                 )}
               </div>
+
+              {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
+              {onsiteAdded > 0 && (
+                <ThermometerChart
+                  avg={nextVisitEffectiveAvg}
+                  retailRate={RETAIL_RATE}
+                  tag="NEXT"
+                />
+              )}
             </div>
 
             {/* ── Sign-Off Row ── */}
