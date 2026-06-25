@@ -296,7 +296,11 @@ export default function JobCloseout() {
   const nextVisitDiscount = 2 + addCredit;
   const nextVisitWindows  = baseWindows + onsiteAdded + freeGiven;
   const nextVisitRetail   = nextVisitWindows * RETAIL_RATE;
-  const nextVisitOffer    = Math.max(20, Math.max(nextVisitRetail * 0.5, nextVisitRetail - nextVisitDiscount));
+  // When no adds: cap next visit at "same price as today minus $2" so 1-win orders stay affordable
+  const nextVisitOfferBase = onsiteAdded === 0
+    ? Math.max(20, Math.min(baseTotal, nextVisitRetail) - 2)
+    : Math.max(20, Math.max(nextVisitRetail * 0.5, nextVisitRetail - nextVisitDiscount));
+  const nextVisitOffer = nextVisitOfferBase;
   const nextVisitEffectiveAvg = (nextVisitWindows + qualifyingAdds) > 0
     ? nextVisitOffer / (nextVisitWindows + qualifyingAdds)
     : 0;
@@ -985,10 +989,12 @@ export default function JobCloseout() {
                           </span>
                           <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−$2.00</span>
                         </div>
-                        {addCredit > 0 && (
+                        {displayAddCredit > 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                             <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                              Add credit · {qualifyingAdds}×${ONSITE_RATE}{freeGiven > 0 ? ` + free win` : ""}
+                              {onsiteAdded > 0
+                                ? `Add credit · ${qualifyingAdds}×$${ONSITE_RATE}${freeGiven > 0 ? " + free win" : ""}`
+                                : "Free window credit"}
                             </span>
                             <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(displayAddCredit)}</span>
                           </div>
