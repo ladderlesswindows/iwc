@@ -968,10 +968,10 @@ export default function JobCloseout() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                           <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                            Next visit · {nextVisitWindows} win · retail
+                            Next visit · {totalWindows} win · retail value
                           </span>
                           <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>
-                            ${fmtD(nextVisitRetail)}
+                            ${fmtD(totalWindows * RETAIL_RATE)}
                           </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
