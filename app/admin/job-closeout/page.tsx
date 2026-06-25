@@ -217,21 +217,9 @@ export default function JobCloseout() {
 
   // ── Beach video banner ──
   const videoRef                    = useRef<HTMLVideoElement>(null);
-  const [videoX, setVideoX]         = useState(100);
-  const [videoTx, setVideoTx]       = useState("none");
   const [videoMuted, setVideoMuted] = useState(true);
 
-  function startVideoSlide() {
-    setVideoTx("none");
-    setVideoX(100);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      setVideoTx("transform 10s linear");
-      setVideoX(0);
-      videoRef.current?.play().catch(() => {});
-    }));
-  }
-
-  useEffect(() => { if (step === 1) startVideoSlide(); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { videoRef.current?.play().catch(() => {}); }, [step]);
 
   type PromoCode = { code: string; notes: string | null; discount_type: string; discount_value: number; active: boolean };
   const [showPromoPanel, setShowPromoPanel] = useState(false);
@@ -618,8 +606,6 @@ export default function JobCloseout() {
               loop
               style={{
                 width: "100%", height: "100%", objectFit: "cover", display: "block",
-                transform: `translateX(${videoX}%)`,
-                transition: videoTx,
               }}
             />
           </div>
