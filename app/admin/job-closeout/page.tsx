@@ -144,50 +144,6 @@ function ThermometerChart({ avg, retailRate, tag, frozen }: { avg: number; retai
   );
 }
 
-function ScriptCard({ heading, children }: { heading: string; children: React.ReactNode }) {
-  return (
-    <div style={{
-      background: "#FAFAF8", borderRadius: 24,
-      padding: "44px 52px", maxWidth: 780, margin: "0 auto",
-      boxShadow: "0 12px 60px rgba(0,0,0,0.5)",
-    }}>
-      <div style={{
-        fontSize: 11, fontWeight: 700, letterSpacing: "0.22em",
-        textTransform: "uppercase", color: "#94a3b8", marginBottom: 22,
-      }}>
-        {heading}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function ReadoutField({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-      <div style={{
-        fontSize: 8, color: "#4a8a5a", letterSpacing: "0.2em",
-        fontFamily: "'Courier New', monospace", textTransform: "uppercase",
-      }}>
-        {label}
-      </div>
-      <div style={{
-        border: "1px solid rgba(0,150,40,0.45)",
-        borderRadius: 3,
-        padding: "8px 10px",
-        background: "rgba(0,20,0,0.5)",
-        fontFamily: "'Courier New', monospace",
-        fontSize: 18, fontWeight: 700,
-        color: "#7ecc8e",
-        letterSpacing: "0.02em",
-        textAlign: "center",
-      }}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
 export default function JobCloseout() {
   const router = useRouter();
   const [authed, setAuthed]       = useState(false);
@@ -206,7 +162,6 @@ export default function JobCloseout() {
   const [tookScreenLesson, setTookScreenLesson]           = useState(false);
   const [recurringAccepted, setRecurringAccepted]   = useState(false);
   const [depositCollected, setDepositCollected]     = useState(false);
-  const [interiorDecision, setInteriorDecision]     = useState<InteriorDecision>(null);
   const [saving, setSaving]                         = useState(false);
   const [showThankYouModal, setShowThankYouModal]   = useState(false);
   const [lastSecondOpen, setLastSecondOpen]         = useState(false);
@@ -349,7 +304,6 @@ export default function JobCloseout() {
     } finally {
       setSaving(false);
       setFrozenAvg(avg);
-      setInteriorDecision(decision);
       setShowAgreementModal(false);
       setStep(2);
     }
@@ -369,7 +323,7 @@ export default function JobCloseout() {
   const resetFlow = () => {
     setStep(0); setSelectedId("");
     setOnsiteAdded(0); setFreeGiven(0); setInteriorsEnabled(false); setInteriorsAdded(0);
-    setRecurringAccepted(false); setDepositCollected(false); setInteriorDecision(null);
+    setRecurringAccepted(false); setDepositCollected(false);
     setShowThankYouModal(false); setLastSecondOpen(false); setRateAgreed(false);
   };
 
@@ -988,13 +942,10 @@ export default function JobCloseout() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 5 }}>
                           <div>
                             <div style={{ fontSize: 7, color: "#0A2740", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.3 }}>
-                              Next Visit Booked Now
+                              Next Visit Booked Now · valid 1 year
                             </div>
                             <div style={{ fontSize: 6, color: "#3AAAC4", letterSpacing: "0.04em" }}>
                               Pre-book · no deposit required
-                            </div>
-                            <div style={{ fontSize: 6, color: "#B0C8D4", fontStyle: "italic", marginTop: 3 }}>
-                              *valid 7 months
                             </div>
                           </div>
                           <div style={{ fontSize: 26, fontWeight: 900, color: "#0A3D5C", fontFamily: "Georgia,'Times New Roman',serif", lineHeight: 1 }}>
