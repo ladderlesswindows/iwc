@@ -6,6 +6,14 @@ import { techDisplayName, PRICE_PER_WINDOW, PRICE_PER_WINDOW_EXTRA } from "@/lib
 
 type Step = 0 | 1 | 2 | 3;
 type InteriorDecision = "today" | "scheduled" | "declined" | null;
+type UpsellSession = {
+  id: string; booking_id: string; completed_at: string;
+  base_windows: number; base_total: number;
+  onsite_windows_added: number; free_windows_given: number;
+  total_charged: number;
+  interior_windows: number | null; interior_total: number | null;
+  interior_decision: string | null;
+};
 
 const ONSITE_RATE          = 12.50;
 const ONSITE_WINDOW_CAP    = 40;
@@ -167,6 +175,8 @@ export default function JobCloseout() {
   const [lastSecondOpen, setLastSecondOpen]         = useState(false);
   const [rateAgreed, setRateAgreed]                 = useState(false);
   const [_frozenAvg, setFrozenAvg]                  = useState(0); // reserved for left thermometer re-insertion
+  const [sessions, setSessions]                     = useState<UpsellSession[]>([]);
+  const loadingFromSessionRef                       = useRef(false);
 
   // ── Beach video banner ──
   const videoRef                    = useRef<HTMLVideoElement>(null);
@@ -183,6 +193,7 @@ export default function JobCloseout() {
 
   useEffect(() => {
     if (!selectedId) return;
+    if (loadingFromSessionRef.current) { loadingFromSessionRef.current = false; return; }
     const b = bookings.find(b => b.id === selectedId);
     if (!b) return;
     const bTotal   = Number(b.total_price ?? 0);
@@ -211,17 +222,17 @@ export default function JobCloseout() {
 
   useEffect(() => {
     if (!authed || !password) return;
-    fetch("/api/admin/bookings", {
-      headers: { "x-admin-pw": password, "Content-Type": "application/json" },
-    })
+    const h = { "x-admin-pw": password, "Content-Type": "application/json" };
+    fetch("/api/admin/bookings", { headers: h })
       .then(r => r.json())
       .then(data => {
         const today = localToday();
-        const jobs = ((data.bookings ?? []) as Booking[]).filter(
-          b => b.service_date === today
-        );
-        setBookings(jobs);
+        setBookings(((data.bookings ?? []) as Booking[]).filter(b => b.service_date === today));
       })
+      .catch(console.error);
+    fetch("/api/admin/upsell", { headers: h })
+      .then(r => r.json())
+      .then(data => setSessions((data.sessions ?? []) as UpsellSession[]))
       .catch(console.error);
   }, [authed, password]);
 
@@ -333,92 +344,154 @@ export default function JobCloseout() {
   if (!authed) return null;
 
   // ─── STEP 0: Select today's job ────────────────────────────────────────
-  if (step === 0) return (
-    <div style={{
-      minHeight: "100vh",
-      background: "radial-gradient(ellipse at 35% 25%, #180a3a 0%, #06050f 45%, #080818 100%)",
-      display: "flex", flexDirection: "column",
-      fontFamily: "var(--font-space-grotesk), -apple-system, sans-serif",
-      padding: "44px 40px",
-    }}>
-      <div style={{ marginBottom: 44 }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 10, fontWeight: 600 }}>
-          Simple Window Cleaning
-        </div>
-        <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-0.01em" }}>
-          Job Closeout
-        </div>
-        <div style={{ fontSize: 16, color: "rgba(255,255,255,0.38)", marginTop: 8 }}>
-          Select today&rsquo;s job to begin the closeout flow
-        </div>
-      </div>
+  if (step === 0) {
+    const completedIds = new Set(sessions.map(s => s.booking_id));
+    const activeBookings    = bookings.filter(b => !completedIds.has(b.id));
+    const completedBookings = bookings.filter(b =>  completedIds.has(b.id));
 
-      {bookings.length === 0 ? (
-        <div style={{
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: 20, padding: "56px 40px", textAlign: "center",
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 20 }}>📋</div>
-          <div style={{ fontSize: 20, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>
-            No jobs scheduled for today
-          </div>
-          <div style={{ fontSize: 14, color: "rgba(255,255,255,0.2)" }}>
-            Add a booking or check back when a job is on the calendar.
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {bookings.map(b => (
-            <button
-              key={b.id}
-              onClick={() => { setSelectedId(b.id); setStep(1); }}
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                borderRadius: 20, padding: "30px 36px",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                cursor: "pointer", textAlign: "left",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(22,163,74,0.5)")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)")}
-            >
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 6 }}>
-                  {b.first_name} {b.last_name}
-                </div>
-                <div style={{ fontSize: 15, color: "rgba(255,255,255,0.45)" }}>{b.address}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", marginTop: 5 }}>
-                  {b.service_time} · {plural(b.window_count, "window")}
-                </div>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontSize: 30, fontWeight: 800, color: "#34d399" }}>
-                  ${fmtD(Number(b.total_price))}
-                </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", marginTop: 4 }}>
-                  booked total
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+    const openCompletedReview = (b: Booking) => {
+      const session = sessions.find(s => s.booking_id === b.id)!;
+      loadingFromSessionRef.current = true;
+      setSelectedId(b.id);
+      setOnsiteAdded(session.onsite_windows_added);
+      setFreeGiven(session.free_windows_given);
+      const hasInteriors = (session.interior_windows ?? 0) > 0;
+      setInteriorsEnabled(hasInteriors);
+      setInteriorsAdded(session.interior_windows ?? 0);
+      setScreenHandlingEnabled(false);
+      setScreenCount(0);
+      setTookScreenLesson(false);
+      setRecurringAccepted(false);
+      setDepositCollected(false);
+      setRateAgreed(false);
+      setShowThankYouModal(false);
+      setLastSecondOpen(false);
+      setAppliedPromo(null);
+      setPromoInput("");
+      setStep(3);
+    };
 
-      <div style={{ marginTop: "auto", paddingTop: 40, textAlign: "center" }}>
-        <button onClick={signOut} style={{
-          background: "none", border: "none",
-          color: "rgba(255,255,255,0.18)", fontSize: 13, cursor: "pointer",
-        }}>
-          Sign out
+    const JobCard = ({ b, isCompleted }: { b: Booking; isCompleted?: boolean }) => {
+      const session = isCompleted ? sessions.find(s => s.booking_id === b.id) : undefined;
+      return (
+        <button
+          onClick={() => isCompleted ? openCompletedReview(b) : (setSelectedId(b.id), setStep(1))}
+          style={{
+            background: isCompleted ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${isCompleted ? "rgba(52,211,153,0.2)" : "rgba(255,255,255,0.09)"}`,
+            borderRadius: 20, padding: "28px 36px",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            cursor: "pointer", textAlign: "left", transition: "all 0.15s", width: "100%",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = isCompleted ? "rgba(52,211,153,0.5)" : "rgba(22,163,74,0.5)")}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = isCompleted ? "rgba(52,211,153,0.2)" : "rgba(255,255,255,0.09)")}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 20, fontWeight: 700, color: "white" }}>
+                {b.first_name} {b.last_name}
+              </span>
+              {isCompleted && (
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#34d399", border: "1px solid rgba(52,211,153,0.4)", borderRadius: 4, padding: "2px 6px" }}>
+                  Closed Out
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}>{b.address}</div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 4 }}>
+              {b.service_time} · {plural(b.window_count, "window")}
+              {session && session.onsite_windows_added > 0 && (
+                <span style={{ color: "rgba(52,211,153,0.6)" }}> + {session.onsite_windows_added} added</span>
+              )}
+            </div>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: isCompleted ? "#34d399" : "#34d399" }}>
+              ${fmtD(Number(b.total_price))}
+            </div>
+            {session && Number(session.total_charged) > 0 && (
+              <div style={{ fontSize: 13, color: "#34d399", fontWeight: 600, marginTop: 2 }}>
+                +${fmtD(Number(session.total_charged))} adds
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 3 }}>
+              {isCompleted ? "view record" : "booked total"}
+            </div>
+          </div>
         </button>
-      </div>
-    </div>
-  );
+      );
+    };
 
-  // ─── STEP 1: Service Record Document ───────────────────────────────────
-  if (step === 1 || step === 2) {
-    const isComplete      = step === 2;
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "radial-gradient(ellipse at 35% 25%, #180a3a 0%, #06050f 45%, #080818 100%)",
+        display: "flex", flexDirection: "column",
+        fontFamily: "var(--font-space-grotesk), -apple-system, sans-serif",
+        padding: "44px 40px",
+      }}>
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 10, fontWeight: 600 }}>
+            Simple Window Cleaning
+          </div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "white", letterSpacing: "-0.01em" }}>
+            Job Closeout
+          </div>
+        </div>
+
+        {bookings.length === 0 ? (
+          <div style={{
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 20, padding: "56px 40px", textAlign: "center",
+          }}>
+            <div style={{ fontSize: 20, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>
+              No jobs scheduled for today
+            </div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.2)" }}>
+              Add a booking or check back when a job is on the calendar.
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            {activeBookings.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 14, fontWeight: 700 }}>
+                  Select a Job
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {activeBookings.map(b => <JobCard key={b.id} b={b} />)}
+                </div>
+              </div>
+            )}
+            {completedBookings.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(52,211,153,0.5)", marginBottom: 14, fontWeight: 700 }}>
+                  Completed Today
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {completedBookings.map(b => <JobCard key={b.id} b={b} isCompleted />)}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ marginTop: "auto", paddingTop: 40, textAlign: "center" }}>
+          <button onClick={signOut} style={{
+            background: "none", border: "none",
+            color: "rgba(255,255,255,0.18)", fontSize: 13, cursor: "pointer",
+          }}>
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── STEP 1 / 2 / 3: Service Record Document ──────────────────────────
+  if (step === 1 || step === 2 || step === 3) {
+    const isComplete = step === 2;
+    const isReview   = step === 3;
     const canShowOffer    = baseWindows > 0;
     const depositRequired = false; // prepay logic removed; will re-add with add-credit cap
     const canProceed      = canShowOffer
@@ -452,7 +525,7 @@ export default function JobCloseout() {
     return (
       <div style={{
         height: "100vh", display: "flex", flexDirection: "column",
-        background: "linear-gradient(90deg, #061C2E 0%, #0A2F48 100%)",
+        background: isReview ? "#000000" : "linear-gradient(90deg, #061C2E 0%, #0A2F48 100%)",
         fontFamily: "var(--font-space-grotesk), -apple-system, sans-serif",
       }}>
         <style>{`
@@ -921,13 +994,13 @@ export default function JobCloseout() {
                     {canShowOffer ? (
                       /* ── Next visit offer breakdown ── */
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                        {/* Top row — base booking only, never changes with adds */}
+                        {/* Top row */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                           <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                            Next visit · {originalVisitWindows} win · retail value
+                            Next visit · {isReview ? nextVisitWindows : originalVisitWindows} win · retail value
                           </span>
                           <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>
-                            ${fmtD(originalVisitRetailValue)}
+                            ${fmtD(isReview ? nextVisitWindows * RETAIL_RATE : originalVisitRetailValue)}
                           </span>
                         </div>
                         {/* Pre-book discount */}
@@ -937,13 +1010,22 @@ export default function JobCloseout() {
                           </span>
                           <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−$2.00</span>
                         </div>
-                        {/* Free window credit — always visible when freeGiven > 0 */}
+                        {/* Free window credit */}
                         {freeGiven > 0 && (
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                             <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
                               Free window credit
                             </span>
                             <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(freeGiven * RETAIL_RATE)}</span>
+                          </div>
+                        )}
+                        {/* Add-on windows credit — step 3 only */}
+                        {isReview && addPromoCredit > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
+                            <span style={{ fontSize: 7, color: "#059669", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                              Add-on credit ({qualifyingAdds} win · 50% off)
+                            </span>
+                            <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(addPromoCredit)}</span>
                           </div>
                         )}
                         {/* Big number */}
@@ -953,11 +1035,13 @@ export default function JobCloseout() {
                               Next Visit Subtotal
                             </div>
                             <div style={{ fontSize: 6, color: "#3AAAC4", letterSpacing: "0.04em" }}>
-                              Includes today&apos;s free windows + addl $2 discount
+                              {isReview && addPromoCredit > 0
+                                ? `Includes free windows + $2 discount + add-on credit`
+                                : `Includes today's free windows + addl $2 discount`}
                             </div>
                           </div>
                           <div style={{ fontSize: 26, fontWeight: 900, color: "#0A3D5C", fontFamily: "Georgia,'Times New Roman',serif", lineHeight: 1 }}>
-                            ${fmtD(nextVisitOffer)}
+                            ${fmtD(isReview ? Math.max(20, nextVisitOffer - addPromoCredit) : nextVisitOffer)}
                           </div>
                         </div>
 
@@ -1010,8 +1094,8 @@ export default function JobCloseout() {
 
                 </div>
 
-                {/* ── Add-on controls (step 1) / Rate agreement (step 2) ── */}
-                {!isComplete ? (
+                {/* ── Add-on controls (step 1 + 3) / Rate agreement (step 2) ── */}
+                {(!isComplete || isReview) ? (
                   <div style={{ display: "flex", borderTop: "1px solid #D8EFF6" }}>
                     {/* Left: Box 2 (exterior) stacked on Box 3 (interior) */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -1279,7 +1363,21 @@ export default function JobCloseout() {
         )}
 
         <ConfirmBar>
-          {isComplete ? (
+          {isReview ? (
+            <button
+              onClick={() => resetFlow()}
+              style={{
+                width: "100%", padding: "21px",
+                background: "linear-gradient(135deg, #111118, #1c1c2e)",
+                border: "1px solid rgba(52,211,153,0.3)", borderRadius: 16,
+                fontSize: 18, fontWeight: 700, color: "#34d399",
+                boxShadow: "0 4px 20px rgba(52,211,153,0.1)",
+                cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.01em",
+              }}
+            >
+              Rate Technician (Thank you!)
+            </button>
+          ) : isComplete ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%" }}>
               <button
                 onClick={() => setShowThankYouModal(true)}
