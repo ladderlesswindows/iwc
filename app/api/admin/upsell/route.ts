@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 //   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 //   created_at timestamptz DEFAULT now(),
 //   booking_id uuid REFERENCES bookings(id),
+//   technician_name text,
 //   base_windows int NOT NULL,
 //   base_total numeric NOT NULL,
 //   onsite_windows_added int DEFAULT 0,
@@ -24,6 +25,8 @@ export const dynamic = "force-dynamic";
 //   interior_total numeric,
 //   completed_at timestamptz DEFAULT now()
 // );
+//
+// If the table already exists: ALTER TABLE upsell_sessions ADD COLUMN IF NOT EXISTS technician_name text;
 
 export async function POST(req: NextRequest) {
   const deny = assertAdmin(req);
@@ -34,6 +37,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await supabase.from("upsell_sessions").insert({
     booking_id:            body.booking_id,
+    technician_name:       body.technician_name ?? null,
     base_windows:          body.base_windows,
     base_total:            body.base_total,
     onsite_windows_added:  body.onsite_windows_added,
