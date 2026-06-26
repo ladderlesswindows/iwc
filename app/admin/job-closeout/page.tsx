@@ -1008,45 +1008,118 @@ export default function JobCloseout() {
                     )}
                   </div>
 
-                  {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
-                  {onsiteAdded > 0 && (
-                    <ThermometerChart avg={nextVisitEffectiveAvg} retailRate={RETAIL_RATE} tag="NEXT" />
-                  )}
                 </div>
 
-                {/* ── Box 2: On-site exterior add-ons ── */}
-                {!isComplete && (onsiteAdded === 0 ? (
-                  <div style={{ padding: "5px 14px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
-                    onClick={() => setOnsiteAdded(1)}
-                  >
-                    <div style={{ width: 13, height: 13, borderRadius: 3, border: "1.5px solid #B8DCE8", background: "transparent", flexShrink: 0 }} />
-                    <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                      Add on-site exterior windows
-                    </span>
+                {/* ── Add-on controls (step 1) / Rate agreement (step 2) ── */}
+                {!isComplete ? (
+                  <div style={{ display: "flex", borderTop: "1px solid #D8EFF6" }}>
+                    {/* Left: Box 2 (exterior) stacked on Box 3 (interior) */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                      {/* Box 2: Exterior */}
+                      {onsiteAdded === 0 ? (
+                        <div style={{ padding: "5px 14px", borderBottom: "1px solid #D8EFF6", background: "#F5FBFD", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+                          onClick={() => setOnsiteAdded(1)}
+                        >
+                          <div style={{ width: 13, height: 13, borderRadius: 3, border: "1.5px solid #B8DCE8", background: "transparent", flexShrink: 0 }} />
+                          <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                            Add on-site exterior windows
+                          </span>
+                        </div>
+                      ) : (
+                        <div style={{ padding: "5px 14px 6px", borderBottom: "1px solid #D8EFF6", background: "#F0F9FC" }}>
+                          <div style={{ fontSize: 7, letterSpacing: "0.14em", fontWeight: 700, color: "#1278A0", textTransform: "uppercase", marginBottom: 4 }}>On-Site Add-Ons</div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <button onClick={e => { e.stopPropagation(); setOnsiteAdded(p => Math.max(0, p - 1)); }} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, lineHeight: 1 }}>−</button>
+                              <span style={{ fontSize: 11, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{onsiteAdded}</span>
+                              <button onClick={e => { e.stopPropagation(); setOnsiteAdded(p => p + 1); }} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, lineHeight: 1 }}>+</button>
+                              <span style={{ fontSize: 8, color: "#0A2740" }}>Windows added in extra time</span>
+                            </div>
+                            <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>+${fmtD(onsiteAdded * ONSITE_RATE)}</span>
+                          </div>
+                          {qualifyingAdds > 0 && (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingLeft: 46 }}>
+                              <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>50% off add-on special</span>
+                              <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(addPromoCredit)}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Box 3: Interior */}
+                      <div style={{ padding: "6px 14px 8px", background: "#F5FBFD", flex: 1 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: interiorsEnabled ? 6 : 0 }}>
+                          <div
+                            onClick={() => { setInteriorsEnabled(p => { if (p) setInteriorsAdded(0); return !p; }); }}
+                            style={{
+                              width: 13, height: 13, borderRadius: 3,
+                              border: `1.5px solid ${interiorsEnabled ? "#1278A0" : "#B8DCE8"}`,
+                              background: interiorsEnabled ? "#1278A0" : "transparent",
+                              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {interiorsEnabled && <span style={{ color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+                          </div>
+                          <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                            Add interior?
+                          </span>
+                        </label>
+                        {interiorsEnabled && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <button onClick={() => setInteriorsAdded(p => Math.max(0, p - 1))} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
+                            <span style={{ fontSize: 13, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{interiorsAdded}</span>
+                            <button onClick={() => setInteriorsAdded(p => p + 1)} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
+                            <span style={{ fontSize: 8, color: "#3AAAC4" }}>interior win · $12.50 ea <span style={{ textDecoration: "line-through", color: "#B0C8D4" }}>$15</span></span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Add-On Charges (Today) */}
+                    <div style={{ width: 116, borderLeft: "1px solid #D8EFF6", padding: "7px 9px", background: "#FAFCFE", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+                      <div style={{ fontSize: 6, letterSpacing: "0.16em", color: "#1278A0", fontWeight: 700, textTransform: "uppercase", marginBottom: 5, paddingBottom: 3, borderBottom: "1px solid #D8EFF6" }}>
+                        Add-On Charges
+                      </div>
+                      {onsiteAdded > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+                          <span style={{ fontSize: 7, color: "#6B8B9A" }}>{onsiteAdded} ext.</span>
+                          <span style={{ fontSize: 9, color: "#0A2740", fontWeight: 600 }}>${fmtD(onsiteAdded * ONSITE_RATE)}</span>
+                        </div>
+                      )}
+                      {interiorsAdded > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+                          <span style={{ fontSize: 7, color: "#6B8B9A" }}>{interiorsAdded} int.</span>
+                          <span style={{ fontSize: 9, color: "#0A2740", fontWeight: 600 }}>${fmtD(interiorTotal)}</span>
+                        </div>
+                      )}
+                      {screenCount > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+                          <span style={{ fontSize: 7, color: "#6B8B9A" }}>{screenCount} scrn</span>
+                          <span style={{ fontSize: 9, color: "#0A2740", fontWeight: 600 }}>${fmtD(screenTotal - screenCredit)}</span>
+                        </div>
+                      )}
+                      {(onsiteAdded > 0 || interiorsAdded > 0 || screenCount > 0) ? (
+                        <>
+                          <div style={{ borderTop: "1px solid #D8EFF6", paddingTop: 3, marginTop: 3, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                            <span style={{ fontSize: 6, color: "#0A2740", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Today</span>
+                            <span style={{ fontSize: 11, color: "#0A2740", fontWeight: 700 }}>${fmtD(adjustedTotal)}</span>
+                          </div>
+                          {addPromoCredit > 0 && (
+                            <div style={{ marginTop: 5, padding: "4px 6px", background: "rgba(5,150,105,0.07)", borderRadius: 4, borderLeft: "2px solid #059669" }}>
+                              <div style={{ fontSize: 6, color: "#059669", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, marginBottom: 1 }}>
+                                Next Visit Credit
+                              </div>
+                              <div style={{ fontSize: 11, color: "#059669", fontWeight: 700 }}>−${fmtD(addPromoCredit)}</div>
+                              <div style={{ fontSize: 6, color: "#059669", opacity: 0.7, lineHeight: 1.3, marginTop: 1 }}>if added to next estimate</div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 7, color: "#B0C8D4", fontStyle: "italic", paddingTop: 4 }}>No add-ons yet</div>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <div style={{ padding: "5px 14px 6px", borderTop: "1px solid #D8EFF6", background: "#F0F9FC" }}>
-                    <div style={{ fontSize: 7, letterSpacing: "0.14em", fontWeight: 700, color: "#1278A0", textTransform: "uppercase", marginBottom: 4 }}>On-Site Add-Ons</div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                        <button onClick={e => { e.stopPropagation(); setOnsiteAdded(p => Math.max(0, p - 1)); }} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, lineHeight: 1 }}>−</button>
-                        <span style={{ fontSize: 11, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{onsiteAdded}</span>
-                        <button onClick={e => { e.stopPropagation(); setOnsiteAdded(p => p + 1); }} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, lineHeight: 1 }}>+</button>
-                        <span style={{ fontSize: 8, color: "#0A2740" }}>Windows added in extra time</span>
-                      </div>
-                      <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>+${fmtD(onsiteAdded * ONSITE_RATE)}</span>
-                    </div>
-                    {qualifyingAdds > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingLeft: 46 }}>
-                        <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>50% off add-on special</span>
-                        <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(addPromoCredit)}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* ── Interior add-on (step 1) / Rate agreement (step 2) ── */}
-                {isComplete ? (
                   <div style={{ padding: "6px 14px 8px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD" }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
                       onClick={() => setRateAgreed(p => !p)}
@@ -1063,46 +1136,6 @@ export default function JobCloseout() {
                         I agree to the next visit rate shown above
                       </span>
                     </label>
-                  </div>
-                ) : (
-                  <div style={{ padding: "6px 14px 8px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", marginBottom: interiorsEnabled ? 6 : 0 }}>
-                      <div
-                        onClick={() => { setInteriorsEnabled(p => { if (p) setInteriorsAdded(0); return !p; }); }}
-                        style={{
-                          width: 13, height: 13, borderRadius: 3,
-                          border: `1.5px solid ${interiorsEnabled ? "#1278A0" : "#B8DCE8"}`,
-                          background: interiorsEnabled ? "#1278A0" : "transparent",
-                          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {interiorsEnabled && <span style={{ color: "#fff", fontSize: 8, fontWeight: 800, lineHeight: 1 }}>✓</span>}
-                      </div>
-                      <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                        Add interior?
-                      </span>
-                    </label>
-                    {interiorsEnabled && (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <button onClick={() => setInteriorsAdded(p => Math.max(0, p - 1))} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>−</button>
-                          <span style={{ fontSize: 13, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{interiorsAdded}</span>
-                          <button onClick={() => setInteriorsAdded(p => p + 1)} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>+</button>
-                          <span style={{ fontSize: 8, color: "#3AAAC4" }}>interior win · $12.50 ea <span style={{ textDecoration: "line-through", color: "#B0C8D4" }}>$15</span></span>
-                        </div>
-                        <button
-                          onClick={() => setShowAgreementModal(true)}
-                          style={{
-                            background: "#1278A0", border: "none", borderRadius: 5,
-                            color: "#fff", fontSize: 8, fontWeight: 700, padding: "4px 10px",
-                            cursor: "pointer", letterSpacing: "0.06em",
-                          }}
-                        >
-                          NEXT →
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1225,9 +1258,21 @@ export default function JobCloseout() {
                 <p style={{ fontSize: 10, color: "#0A2740", margin: "0 0 4px", lineHeight: 1.5 }}>
                   I authorize an additional <strong>${fmtD(adjustedTotal)}</strong> for today&apos;s add-on services.
                 </p>
-                <p style={{ fontSize: 9, color: "#3AAAC4", margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 9, color: "#3AAAC4", margin: "0 0 14px", lineHeight: 1.5 }}>
                   Today&apos;s additions unlock promo codes valid for the next 13 months.
                 </p>
+                <button
+                  onClick={() => { setShowAgreementModal(false); saveAndAdvance(interiorsAdded > 0 ? "today" : "declined"); }}
+                  style={{
+                    width: "100%", padding: "13px",
+                    background: "linear-gradient(135deg, #0A3D5C, #1278A0)",
+                    border: "none", borderRadius: 10, color: "#FFFFFF",
+                    fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    letterSpacing: "0.02em", boxShadow: "0 4px 14px rgba(18,120,160,0.35)",
+                  }}
+                >
+                  I Authorize — Now Get to Work!
+                </button>
               </div>
             </div>
           </div>
@@ -1255,7 +1300,7 @@ export default function JobCloseout() {
             </div>
           ) : (
             <button
-              onClick={() => canProceed && saveAndAdvance(interiorsAdded > 0 ? "today" : "declined")}
+              onClick={() => { if (!canProceed || saving) return; if (adjustedTotal > 0) { setShowAgreementModal(true); } else { saveAndAdvance("declined"); } }}
               disabled={!canProceed || saving}
               style={{
                 width: "100%", padding: "21px",
