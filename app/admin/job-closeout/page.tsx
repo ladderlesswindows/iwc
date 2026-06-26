@@ -1293,7 +1293,25 @@ export default function JobCloseout() {
                 )}
               </div>
               <button
-                onClick={() => resetFlow()}
+                onClick={() => {
+                  const session = sessions.find(s => s.booking_id === selectedId);
+                  if (!session) return;
+                  const hasInteriors = (session.interior_windows ?? 0) > 0;
+                  setOnsiteAdded(session.onsite_windows_added);
+                  setFreeGiven(session.free_windows_given);
+                  setInteriorsEnabled(hasInteriors);
+                  setInteriorsAdded(session.interior_windows ?? 0);
+                  setScreenHandlingEnabled(false);
+                  setScreenCount(0);
+                  setTookScreenLesson(false);
+                  setRecurringAccepted(false);
+                  setDepositCollected(false);
+                  setRateAgreed(false);
+                  setShowThankYouModal(false);
+                  setLastSecondOpen(false);
+                  setAppliedPromo(null);
+                  setPromoInput("");
+                }}
                 style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#1278A0", background: "none", border: "1px solid #B8DCE8", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}
               >
                 Reset
