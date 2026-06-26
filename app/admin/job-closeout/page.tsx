@@ -272,8 +272,8 @@ export default function JobCloseout() {
   // Step 3 (review) next-visit plan
   const reviewRetailValue       = totalWindows * RETAIL_RATE;
   const reviewPreviousDiscounts = 2 + freeGiven * RETAIL_RATE;
-  const reviewInteriorCarry     = interiorsAdded * (RETAIL_RATE - ONSITE_RATE);
-  const reviewBeforePrepay      = reviewRetailValue - reviewPreviousDiscounts - addPromoCredit - reviewInteriorCarry;
+  const reviewInteriorCarry     = interiorsAdded * ONSITE_RATE;
+  const reviewBeforePrepay      = reviewRetailValue - reviewPreviousDiscounts - addPromoCredit + reviewInteriorCarry;
   const reviewThermAvg          = totalWindows > 0 ? reviewBeforePrepay / totalWindows : 0;
 
   const openPromoPanel = () => {
@@ -1023,10 +1023,10 @@ export default function JobCloseout() {
                             )}
                             {interiorsAdded > 0 && (
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
-                                <span style={{ fontSize: 7, color: "#059669", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                                <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
                                   Add On ({interiorsAdded} × $12.50)
                                 </span>
-                                <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(reviewInteriorCarry)}</span>
+                                <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>+${fmtD(reviewInteriorCarry)}</span>
                               </div>
                             )}
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 5 }}>
