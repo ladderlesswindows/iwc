@@ -273,9 +273,8 @@ export default function JobCloseout() {
   const reviewRetailValue       = nextVisitWindows * RETAIL_RATE;
   const reviewPreviousDiscounts = 2 + freeGiven * RETAIL_RATE;
   const reviewInteriorCarry     = interiorsAdded * ONSITE_RATE;
-  const reviewBeforePrepay      = reviewRetailValue - reviewPreviousDiscounts - addPromoCredit + reviewInteriorCarry;
-  const reviewNextVisitTotal    = reviewBeforePrepay - DEPOSIT;
-  const reviewThermAvg          = nextVisitWindows > 0 ? reviewBeforePrepay / nextVisitWindows : 0;
+  const reviewBeforePrepay = reviewRetailValue - reviewPreviousDiscounts - addPromoCredit + reviewInteriorCarry;
+  const reviewThermAvg     = nextVisitWindows > 0 ? reviewBeforePrepay / nextVisitWindows : 0;
 
   const openPromoPanel = () => {
     setShowPromoPanel(p => !p);
@@ -1025,15 +1024,11 @@ export default function JobCloseout() {
                             {interiorsAdded > 0 && (
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                                 <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                                  Add on Interiors ({interiorsAdded} × $12.50)
+                                  Add On ({interiorsAdded} × $12.50)
                                 </span>
                                 <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>+${fmtD(reviewInteriorCarry)}</span>
                               </div>
                             )}
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px dashed #B8DCE8", marginTop: 1 }}>
-                              <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>Pre-book</span>
-                              <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(DEPOSIT)}</span>
-                            </div>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 5 }}>
                               <div>
                                 <div style={{ fontSize: 7, color: "#0A2740", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1.3 }}>
@@ -1042,7 +1037,7 @@ export default function JobCloseout() {
                                 <div style={{ fontSize: 6, color: "#3AAAC4", letterSpacing: "0.04em" }}>All discounts + credits applied</div>
                               </div>
                               <div style={{ fontSize: 26, fontWeight: 900, color: "#0A3D5C", fontFamily: "Georgia,'Times New Roman',serif", lineHeight: 1 }}>
-                                ${fmtD(reviewNextVisitTotal)}
+                                ${fmtD(reviewBeforePrepay)}
                               </div>
                             </div>
                           </>
