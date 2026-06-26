@@ -250,15 +250,13 @@ export default function JobCloseout() {
   const originalVisitWindows     = baseWindows + freeGiven;
   const originalVisitRetailValue = baseTotal + freeGiven * RETAIL_RATE;
   const nextVisitWindows  = baseWindows + onsiteAdded + freeGiven;
-  const nextVisitRetail   = nextVisitWindows * RETAIL_RATE;
-  // First Year Add-On Promo: up to min(baseWindows, 5) qualifying adds @ $12.50 credit each
+  // First Year Add-On Promo: up to min(baseWindows, 5) qualifying adds, $6.25 credit each (50% of $12.50)
   const qualifyingAdds   = Math.min(onsiteAdded, Math.min(baseWindows, 5));
-  const addPromoCredit   = qualifyingAdds * ONSITE_RATE;
-  const nextVisitOffer   = onsiteAdded === 0
-    ? Math.max(20, baseTotal - 2)
-    : Math.max(20, nextVisitRetail - 2 - freeGiven * RETAIL_RATE - addPromoCredit);
-  // Thermometer feeds — read-only from the offer math
-  const arrivalAvg           = originalVisitWindows > 0 ? baseTotal / originalVisitWindows : 0;
+  const addPromoCredit   = qualifyingAdds * (ONSITE_RATE / 2);
+  // Box 1 — base booking only, never changes with on-site adds
+  const nextVisitOffer   = Math.max(20, baseTotal - 2);
+  // Thermometer feeds — read-only from the offer math above
+  const arrivalAvg            = originalVisitWindows > 0 ? baseTotal / originalVisitWindows : 0;
   const nextVisitEffectiveAvg = nextVisitWindows > 0 ? nextVisitOffer / nextVisitWindows : 0;
 
   const openPromoPanel = () => {
@@ -910,15 +908,13 @@ export default function JobCloseout() {
                     {canShowOffer ? (
                       /* ── Next visit offer breakdown ── */
                       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                        {/* Top row */}
+                        {/* Top row — base booking only, never changes with adds */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
                           <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                            {onsiteAdded > 0
-                              ? `Next visit · ${nextVisitWindows} win · retail`
-                              : `Next visit · ${originalVisitWindows} win · retail value`}
+                            Next visit · {originalVisitWindows} win · retail value
                           </span>
                           <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>
-                            ${fmtD(onsiteAdded > 0 ? nextVisitRetail : originalVisitRetailValue)}
+                            ${fmtD(originalVisitRetailValue)}
                           </span>
                         </div>
                         {/* Pre-book discount */}
@@ -935,15 +931,6 @@ export default function JobCloseout() {
                               Free window credit
                             </span>
                             <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(freeGiven * RETAIL_RATE)}</span>
-                          </div>
-                        )}
-                        {/* 1st Year Add-On Promo — separate line, up to min(baseWindows, 5) adds */}
-                        {qualifyingAdds > 0 && (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: "1px solid #EBF5FA" }}>
-                            <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                              1st Yr Add-On Promo · {qualifyingAdds}×${ONSITE_RATE}
-                            </span>
-                            <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(addPromoCredit)}</span>
                           </div>
                         )}
                         {/* Big number */}
@@ -1008,7 +995,42 @@ export default function JobCloseout() {
                     )}
                   </div>
 
+                  {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
+                  {onsiteAdded > 0 && (
+                    <ThermometerChart avg={nextVisitEffectiveAvg} retailRate={RETAIL_RATE} tag="NEXT" />
+                  )}
                 </div>
+
+                {/* ── Box 2: On-site exterior add-ons ── */}
+                {!isComplete && (onsiteAdded === 0 ? (
+                  <div style={{ padding: "5px 14px", borderTop: "1px solid #D8EFF6", background: "#F5FBFD", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
+                    onClick={() => setOnsiteAdded(1)}
+                  >
+                    <div style={{ width: 13, height: 13, borderRadius: 3, border: "1.5px solid #B8DCE8", background: "transparent", flexShrink: 0 }} />
+                    <span style={{ fontSize: 8, color: "#1278A0", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                      Add on-site exterior windows
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ padding: "5px 14px 6px", borderTop: "1px solid #D8EFF6", background: "#F0F9FC" }}>
+                    <div style={{ fontSize: 7, letterSpacing: "0.14em", fontWeight: 700, color: "#1278A0", textTransform: "uppercase", marginBottom: 4 }}>On-Site Add-Ons</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <button onClick={e => { e.stopPropagation(); setOnsiteAdded(p => Math.max(0, p - 1)); }} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, lineHeight: 1 }}>−</button>
+                        <span style={{ fontSize: 11, color: "#0A2740", fontWeight: 700, minWidth: 14, textAlign: "center" }}>{onsiteAdded}</span>
+                        <button onClick={e => { e.stopPropagation(); setOnsiteAdded(p => p + 1); }} style={{ width: 15, height: 15, borderRadius: "50%", border: "1px solid #B8DCE8", background: "transparent", color: "#1278A0", cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, lineHeight: 1 }}>+</button>
+                        <span style={{ fontSize: 8, color: "#0A2740" }}>Windows added in extra time</span>
+                      </div>
+                      <span style={{ fontSize: 10, color: "#0A2740", fontWeight: 600 }}>+${fmtD(onsiteAdded * ONSITE_RATE)}</span>
+                    </div>
+                    {qualifyingAdds > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingLeft: 46 }}>
+                        <span style={{ fontSize: 7, color: "#3AAAC4", letterSpacing: "0.06em", textTransform: "uppercase" }}>50% off add-on special</span>
+                        <span style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>−${fmtD(addPromoCredit)}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
 
                 {/* ── Interior add-on (step 1) / Rate agreement (step 2) ── */}
                 {isComplete ? (
@@ -1072,10 +1094,6 @@ export default function JobCloseout() {
                 )}
               </div>
 
-              {/* Right thermometer — next-visit effective avg, appears when adds > 0 */}
-              {onsiteAdded > 0 && (
-                <ThermometerChart avg={nextVisitEffectiveAvg} retailRate={RETAIL_RATE} tag="NEXT" />
-              )}
             </div>
 
             {/* ── Sign-Off Row ── */}
