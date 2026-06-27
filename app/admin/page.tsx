@@ -300,7 +300,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6" style={{ overflowX: "auto", paddingBottom: 4 }}>
         {TABS.map(t => (
           <button key={t.id} className="admin-tab"
             style={{
