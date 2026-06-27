@@ -13,15 +13,19 @@ export default function SMSConsentPage() {
         <section style={{ marginBottom: 32 }}>
           <h2 style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>How We Collect Consent</h2>
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.7 }}>
-            Customers provide their mobile phone number during the booking process at{" "}
-            <a href="https://www.ladderlesswindows.com" style={{ color: "rgba(126,200,227,0.8)" }}>ladderlesswindows.com</a>.
-            At the point of number entry, customers are shown the following disclosure:
+            Customers provide their mobile phone number and check an explicit SMS consent checkbox during the online booking process at{" "}
+            <a href="https://www.simplewindowcleaning.com" style={{ color: "rgba(126,200,227,0.8)" }}>simplewindowcleaning.com</a>{" "}
+            (also accessible at <a href="https://www.ladderlesswindows.com" style={{ color: "rgba(126,200,227,0.8)" }}>ladderlesswindows.com</a>).
+            Customers must actively check the following checkbox before proceeding to checkout:
           </p>
           <div style={{ margin: "16px 0", padding: "16px 20px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10 }}>
             <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 1.7, margin: 0, fontStyle: "italic" }}>
-              "By providing your mobile number you agree to receive service notifications via SMS (dispatch updates, arrival alerts, job-complete confirmations). Msg &amp; data rates may apply. Reply STOP to opt out at any time."
+              "By checking this box, I agree to receive text message appointment updates from Simple Windows. Msg &amp; data rates may apply. Reply STOP to unsubscribe."
             </p>
           </div>
+          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.7 }}>
+            The checkbox is unchecked by default. Customers cannot proceed to checkout without checking it. No SMS consent is collected via any other method.
+          </p>
         </section>
 
         <section style={{ marginBottom: 32 }}>

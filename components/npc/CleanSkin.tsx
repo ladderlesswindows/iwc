@@ -38,12 +38,12 @@ function UpcomingRow({ T, label }: { T: Tokens; label: string }) {
   );
 }
 
-function AccentBtn({ T, label, onClick }: { T: Tokens; label: string; onClick: () => void }) {
+function AccentBtn({ T, label, onClick, disabled }: { T: Tokens; label: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onClick}
-      style={{ width:"100%", background:T.ACCENT, color:"#f9f9ff", border:"none", borderRadius:10, padding:"12px 16px", fontSize:13, fontWeight:700, cursor:"pointer", marginTop:12, transition:"opacity 0.15s" }}
-      onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
-      onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+    <button onClick={onClick} disabled={disabled}
+      style={{ width:"100%", background:T.ACCENT, color:"#f9f9ff", border:"none", borderRadius:10, padding:"12px 16px", fontSize:13, fontWeight:700, cursor:disabled?"not-allowed":"pointer", marginTop:12, transition:"opacity 0.15s", opacity:disabled?0.4:1 }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.opacity = "0.88"; }}
+      onMouseLeave={e => { if (!disabled) e.currentTarget.style.opacity = "1"; }}
     >{label}</button>
   );
 }
@@ -104,6 +104,7 @@ export function CleanSkin(props: SkinProps) {
   const [streetLine, setStreetLine]       = useState("");
   const [apt, setApt]                     = useState("");
   const [town, setTown]                   = useState("");
+  const [smsConsent, setSmsConsent]       = useState(false);
 
   const fieldInput: React.CSSProperties = {
     width:"100%", background:T.INPUT_BG, border:`1px solid ${T.INPUT_BORDER}`,
@@ -279,8 +280,15 @@ export function CleanSkin(props: SkinProps) {
         <ActiveCard T={T}>
           <CardLabel T={T} text="✦ All Set!" />
           <p style={{ fontSize:13, color:T.TEXT, marginBottom:4 }}>Your booking details are ready.</p>
-          <p style={{ fontSize:11, color:T.TEXT_DIM, marginBottom:12 }}>Hit <strong>Book Now</strong> on the form, or go straight to checkout below.</p>
-          <AccentBtn T={T} label="→ Go straight to checkout" onClick={onGoToSummary} />
+          <label style={{ display:"flex", alignItems:"flex-start", gap:8, cursor:"pointer", marginBottom:12 }}>
+            <input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)}
+              style={{ marginTop:2, accentColor:T.ACCENT, flexShrink:0 }} />
+            <span style={{ fontSize:10, color:T.TEXT_DIM, lineHeight:1.5 }}>
+              I agree to receive text message appointment updates from Simple Windows. Msg &amp; data rates may apply. Reply STOP to unsubscribe.{" "}
+              <a href="/sms-consent" target="_blank" style={{ color:T.ACCENT, textDecoration:"none" }}>SMS Policy</a>
+            </span>
+          </label>
+          <AccentBtn T={T} label="→ Go straight to checkout" onClick={onGoToSummary} disabled={!smsConsent} />
           <div style={{ display:"flex", marginTop:8 }}>
             <GhostBtn T={T} label="Start over" onClick={() => advance("location")} />
           </div>

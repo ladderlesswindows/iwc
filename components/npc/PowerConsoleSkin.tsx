@@ -50,6 +50,7 @@ export function PowerConsoleSkin({
   const [street, setStreet]       = useState("");
   const [apt, setApt]             = useState("");
   const [town, setTown]           = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
 
   function pushAddress(s: string, a: string, t: string) {
     if (!s.trim() || !t.trim()) return;
@@ -208,10 +209,20 @@ export function PowerConsoleSkin({
         </div>
       </div>
 
+      {/* ── SMS consent ── */}
+      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", marginBottom: 10, marginTop: 6 }}>
+        <input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)}
+          style={{ marginTop: 2, accentColor: T.ACCENT, flexShrink: 0 }} />
+        <span style={{ fontSize: 10, color: T.TEXT_DIM, lineHeight: 1.5 }}>
+          By checking this box, I agree to receive text message appointment updates from Simple Windows. Msg &amp; data rates may apply. Reply STOP to unsubscribe.{" "}
+          <a href="/sms-consent" target="_blank" style={{ color: T.ACCENT, textDecoration: "none" }}>SMS Policy</a>
+        </span>
+      </label>
+
       {/* ── Book button ── */}
       <button
         onClick={onGoToSummary}
-        disabled={!canBook}
+        disabled={!canBook || !smsConsent}
         style={{
           width: "100%", background: T.ACCENT, color: "#08080e", border: "none",
           borderRadius: 12, padding: "14px 16px", fontSize: 14, fontWeight: 800,
