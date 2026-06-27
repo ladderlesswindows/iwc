@@ -13,8 +13,6 @@ import type { Booking, BlockedSlot } from "@/app/admin/types";
 import { AdminChatWidget } from "@/components/AdminChatWidget";
 import { StaffTab } from "@/components/admin/StaffTab";
 
-const SESSION_KEY = "iwc_admin";
-const PW_KEY = "iwc_admin_pw";
 
 type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "completions" | "settings" | "analytics" | "finance" | "chat" | "staff";
 
@@ -39,7 +37,6 @@ export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [role, setRole]         = useState<"owner" | "staff">("owner");
   const [pw, setPw]             = useState("");
-  const [pwError, setPwError]   = useState(false);
 
   const [tab, setTab]           = useState<Tab>("calendar");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -128,41 +125,20 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(SESSION_KEY);
-    const storedPw = sessionStorage.getItem(PW_KEY) ?? "";
-    if (stored === "owner" || stored === "staff") {
-      setRole(stored as "owner" | "staff");
-      setPw(storedPw);
-      setLoggedIn(true);
-      loadData(storedPw);
-    }
-  }, [loadData]);
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = pw.trim();
-    if (trimmed.toLowerCase() === "staff") {
-      sessionStorage.setItem(SESSION_KEY, "staff");
-      setRole("staff"); setLoggedIn(true); loadData(trimmed);
+    const workerPw = localStorage.getItem("worker_password");
+    if (!workerPw || localStorage.getItem("worker_authed") !== "true") {
+      router.replace("/login");
       return;
     }
-    const res = await fetch("/api/admin/auth", {
-      method: "POST",
-      headers: adminHeader(trimmed),
-    });
-    if (res.ok) {
-      sessionStorage.setItem(SESSION_KEY, "owner");
-      sessionStorage.setItem(PW_KEY, trimmed);
-      setRole("owner"); setLoggedIn(true); loadData(trimmed);
-    } else {
-      setPwError(true);
-    }
-  }
+    setPw(workerPw);
+    setRole("owner");
+    setLoggedIn(true);
+    loadData(workerPw);
+  }, [loadData, router]);
 
   function handleLogout() {
-    sessionStorage.removeItem(SESSION_KEY);
-    sessionStorage.removeItem(PW_KEY);
-    router.push("/commercial");
+    localStorage.removeItem("worker_authed");
+    router.push("/login");
   }
 
   function toggleSelect(id: string) {
@@ -234,26 +210,7 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (!loggedIn) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <motion.div className="w-full max-w-xs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 style={{ color: "white", fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Admin</h1>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, marginBottom: 20 }}>Simple Windows dashboard</p>
-          <form onSubmit={handleLogin} className="flex flex-col gap-3">
-            <div>
-              <label className="field-label">Password</label>
-              <input className="field-input mt-1" type="password" value={pw}
-                onChange={e => { setPw(e.target.value); setPwError(false); }}
-                autoFocus autoComplete="current-password" />
-            </div>
-            {pwError && <p style={{ color: "#f87171", fontSize: 12 }}>Incorrect password.</p>}
-            <button className="book-btn" type="submit">Enter</button>
-          </form>
-        </motion.div>
-      </div>
-    );
-  }
+  if (!loggedIn) return null;
 
   const pendingReviews = completions.filter(c => c.review_status === "pending" && c.review_submitted_at);
 
