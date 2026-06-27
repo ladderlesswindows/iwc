@@ -66,6 +66,7 @@ export default function LoginPage() {
       const { role, name } = await res.json();
       localStorage.setItem("worker_authed", "true");
       localStorage.setItem("worker_employee", name);
+      localStorage.setItem("worker_role", role);
       if (role === "admin") sessionStorage.setItem("admin_session", "true");
       router.push(role === "admin" ? "/admin" : "/admin/job-closeout");
     } else {

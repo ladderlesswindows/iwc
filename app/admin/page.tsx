@@ -292,6 +292,16 @@ export default function AdminPage() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button
+            onClick={() => router.push("/admin/job-closeout")}
+            style={{
+              background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)",
+              borderRadius: 8, color: "rgba(52,211,153,0.8)", fontSize: 11, fontWeight: 700,
+              padding: "6px 14px", cursor: "pointer", letterSpacing: "0.04em",
+            }}
+          >
+            My Jobs
+          </button>
+          <button
             onClick={() => router.push("/admin/worker")}
             style={{
               background: "rgba(126,200,227,0.1)", border: "1px solid rgba(126,200,227,0.25)",

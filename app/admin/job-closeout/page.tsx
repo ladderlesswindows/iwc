@@ -483,7 +483,16 @@ export default function JobCloseout() {
           </div>
         )}
 
-        <div style={{ marginTop: "auto", paddingTop: 40, textAlign: "center" }}>
+        <div style={{ marginTop: "auto", paddingTop: 40, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          {typeof window !== "undefined" && localStorage.getItem("worker_role") === "admin" && (
+            <button onClick={() => { sessionStorage.setItem("admin_session", "true"); window.location.href = "/admin"; }} style={{
+              background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.25)",
+              borderRadius: 8, color: "rgba(167,139,250,0.8)", fontSize: 12, fontWeight: 700,
+              padding: "7px 18px", cursor: "pointer",
+            }}>
+              Admin Dashboard
+            </button>
+          )}
           <button onClick={signOut} style={{
             background: "none", border: "none",
             color: "rgba(255,255,255,0.18)", fontSize: 13, cursor: "pointer",
@@ -1492,7 +1501,7 @@ export default function JobCloseout() {
                 transition: "all 0.2s", letterSpacing: "0.01em",
               }}
             >
-              {saving ? "Saving…" : "Now Get to Work! →"}
+              {saving ? "Saving…" : onsiteAdded > 0 || interiorsAdded > 0 ? "Notify Technician of added windows →" : "Just the prebooked please →"}
             </button>
           )}
         </ConfirmBar>
