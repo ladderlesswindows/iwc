@@ -11,11 +11,12 @@ import { adminHeader } from "@/lib/admin";
 import { formatDateFull, formatTime } from "@/lib/availability";
 import type { Booking, BlockedSlot } from "@/app/admin/types";
 import { AdminChatWidget } from "@/components/AdminChatWidget";
+import { StaffTab } from "@/components/admin/StaffTab";
 
 const SESSION_KEY = "iwc_admin";
 const PW_KEY = "iwc_admin_pw";
 
-type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "completions" | "settings" | "analytics" | "finance" | "chat";
+type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "completions" | "settings" | "analytics" | "finance" | "chat" | "staff";
 
 interface GigCompletion {
   id: string;
@@ -267,6 +268,7 @@ export default function AdminPage() {
     { id: "analytics",  label: "Analytics" },
     { id: "finance",    label: "Finance" },
     { id: "chat",       label: "Chat" },
+    { id: "staff",      label: "Staff" },
   ];
 
   const S: Record<string, React.CSSProperties> = {
@@ -1001,6 +1003,9 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+
+          {/* ── Staff ── */}
+          {tab === "staff" && <StaffTab pw={pw} />}
 
         </motion.div>
       </AnimatePresence>

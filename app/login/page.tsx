@@ -24,15 +24,10 @@ export default function LoginPage() {
   const [setupBusy, setSetupBusy] = useState(false);
 
   useEffect(() => {
+    // Always require fresh PIN on every visit to /login
+    localStorage.removeItem("worker_authed");
     const stored = localStorage.getItem("worker_password");
     if (stored) setHasApi(true);
-    // Already logged in — send to the right place
-    const emp = localStorage.getItem("worker_employee");
-    if (stored && localStorage.getItem("worker_authed") === "true" && emp) {
-      const e = EMPLOYEES.find(e => e.name === emp);
-      router.replace(e?.role === "admin" ? "/admin" : "/admin/job-closeout");
-      return;
-    }
     setReady(true);
   }, [router]);
 
