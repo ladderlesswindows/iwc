@@ -155,6 +155,7 @@ function ThermometerChart({ avg, retailRate, tag, frozen }: { avg: number; retai
 export default function JobCloseout() {
   const router = useRouter();
   const [authed, setAuthed]       = useState(false);
+  const [isAdmin, setIsAdmin]     = useState(false);
   const [password, setPassword]   = useState("");
   const [bookings, setBookings]   = useState<Booking[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -218,6 +219,7 @@ export default function JobCloseout() {
     if (!a) { router.replace("/login"); return; }
     setAuthed(true);
     setPassword(p);
+    setIsAdmin(localStorage.getItem("worker_role") === "admin");
   }, [router]);
 
   useEffect(() => {
@@ -338,6 +340,7 @@ export default function JobCloseout() {
     localStorage.removeItem("worker_authed");
     localStorage.removeItem("worker_password");
     localStorage.removeItem("worker_employee");
+    localStorage.removeItem("worker_role");
     router.push("/login");
   };
 
@@ -484,7 +487,7 @@ export default function JobCloseout() {
         )}
 
         <div style={{ marginTop: "auto", paddingTop: 40, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          {typeof window !== "undefined" && localStorage.getItem("worker_role") === "admin" && (
+          {isAdmin && (
             <button onClick={() => { sessionStorage.setItem("admin_session", "true"); window.location.href = "/admin"; }} style={{
               background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.25)",
               borderRadius: 8, color: "rgba(167,139,250,0.8)", fontSize: 12, fontWeight: 700,

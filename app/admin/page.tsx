@@ -137,6 +137,8 @@ export default function AdminPage() {
 
   function handleLogout() {
     sessionStorage.removeItem("admin_session");
+    localStorage.removeItem("worker_authed");
+    localStorage.removeItem("worker_role");
     router.push("/login");
   }
 
