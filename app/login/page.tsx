@@ -64,6 +64,7 @@ export default function LoginPage() {
     if (entered === selected.pin) {
       localStorage.setItem("worker_authed", "true");
       localStorage.setItem("worker_employee", selected.name);
+      if (selected.role === "admin") sessionStorage.setItem("admin_session", "true");
       router.push(selected.role === "admin" ? "/admin" : "/admin/job-closeout");
     } else {
       setErrFlash(true);

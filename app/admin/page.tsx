@@ -126,7 +126,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     const workerPw = localStorage.getItem("worker_password");
-    if (!workerPw || localStorage.getItem("worker_authed") !== "true") {
+    if (!workerPw || sessionStorage.getItem("admin_session") !== "true") {
       router.replace("/login");
       return;
     }
@@ -137,7 +137,7 @@ export default function AdminPage() {
   }, [loadData, router]);
 
   function handleLogout() {
-    localStorage.removeItem("worker_authed");
+    sessionStorage.removeItem("admin_session");
     router.push("/login");
   }
 
