@@ -64,8 +64,9 @@ export default function AdminPage() {
   const [newDiscountValue, setNewDiscountValue] = useState("");
   const [addingCode, setAddingCode]     = useState(false);
 
-  const pending = bookings.filter(b => b.status === "pending");
-  const batched = bookings.filter(b => b.status === "batched");
+  const pending   = bookings.filter(b => b.status === "pending");
+  const batched   = bookings.filter(b => b.status === "batched");
+  const prebooked = bookings.filter(b => b.status === "prebooked");
 
   const loadData = useCallback(async (password: string) => {
     const h = adminHeader(password);
@@ -266,7 +267,7 @@ export default function AdminPage() {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "calendar", label: "Calendar" },
-    { id: "bookings", label: `Bookings${pending.length ? ` (${pending.length})` : ""}` },
+    { id: "bookings", label: `Bookings${pending.length + prebooked.length ? ` (${pending.length + prebooked.length})` : ""}` },
     { id: "data",     label: `Data${batched.length ? ` (${batched.length})` : ""}` },
     { id: "ics",      label: "Import ICS" },
     { id: "reviews",      label: `Reviews${pendingReviews.length ? ` (${pendingReviews.length})` : ""}` },
@@ -400,6 +401,39 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Prebooked — future year reservations from the app */}
+              {prebooked.length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(126,200,227,0.5)", marginBottom: 10 }}>
+                    PREBOOKED · {prebooked.length} SPOT{prebooked.length !== 1 ? "S" : ""} RESERVED
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {prebooked.map(b => (
+                      <div key={b.id} style={{
+                        background: "rgba(58,170,196,0.06)",
+                        border: "1px solid rgba(58,170,196,0.25)",
+                        borderRadius: 12, padding: "12px 16px",
+                        display: "flex", alignItems: "center", gap: 12,
+                      }}>
+                        <div style={{ fontSize: 18 }}>📅</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
+                            {b.first_name} {b.last_name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>{b.address}</div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div style={{ color: "rgba(126,200,227,0.9)", fontSize: 13, fontWeight: 700 }}>
+                            {new Date(b.service_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </div>
+                          <div style={{ color: "rgba(255,255,255,0.28)", fontSize: 10 }}>${b.total_price} · {b.window_count}w</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
