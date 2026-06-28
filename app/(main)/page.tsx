@@ -56,6 +56,16 @@ function SoftLaunchModal({ onClose }: { onClose: () => void }) {
           exit={{ scale: 0.92, opacity: 0, y: 16 }}
           transition={{ type: "spring", stiffness: 320, damping: 28 }}
         >
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-3 right-3 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
           <div className="h-1 w-full bg-gradient-to-r from-teal-400 via-cyan-300 to-teal-500" />
           <div className="bg-[#07111c] px-7 py-7">
             {/* Header */}
