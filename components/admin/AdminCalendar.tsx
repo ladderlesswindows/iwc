@@ -114,6 +114,21 @@ export function AdminCalendar({ bookings, blocked, onRefresh, role = "owner", ad
     } else if (isOwner) {
       const booking = bookings.find((b) => `booking-${b.id}` === id);
       if (booking) {
+        const wk = (window as any).webkit?.messageHandlers?.bookingTapped;
+        if (wk) {
+          wk.postMessage({
+            id: booking.id,
+            first_name: booking.first_name ?? null,
+            last_name: booking.last_name ?? null,
+            address: booking.address ?? null,
+            service_date: booking.service_date ?? null,
+            service_time: booking.service_time ?? null,
+            window_count: booking.window_count ?? null,
+            total_price: booking.total_price ?? null,
+            status: booking.status ?? null,
+          });
+          return;
+        }
         alert(
           `Booking:\n${booking.first_name ?? ""} ${booking.last_name ?? ""}\n${booking.address}\n${booking.window_count} windows · $${booking.total_price}\nStatus: ${booking.status}`
         );
