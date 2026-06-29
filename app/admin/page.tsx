@@ -12,6 +12,7 @@ import { formatDateFull, formatTime } from "@/lib/availability";
 import type { Booking, BlockedSlot } from "@/app/admin/types";
 import { AdminChatWidget } from "@/components/AdminChatWidget";
 import { StaffTab } from "@/components/admin/StaffTab";
+import { DateStrip } from "@/components/admin/DateStrip";
 
 
 type Tab = "calendar" | "bookings" | "data" | "ics" | "reviews" | "completions" | "settings" | "analytics" | "finance" | "chat" | "staff";
@@ -285,7 +286,9 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-8 max-w-6xl mx-auto">
+    <div className="min-h-screen" style={{ paddingTop: 32, paddingBottom: 32 }}>
+      {/* Header + tabs — constrained width */}
+      <div style={{ maxWidth: 1152, margin: "0 auto", padding: "0 16px" }}>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 style={{ color: "white", fontSize: 18, fontWeight: 700 }}>Simple Windows Admin</h1>
@@ -329,14 +332,24 @@ export default function AdminPage() {
             onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </div>
+      </div>{/* end constrained header wrapper */}
 
       <AnimatePresence mode="wait">
         <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
 
-          {/* ── Calendar ── */}
+          {/* ── Calendar — full-width flex with date strip flush right ── */}
           {tab === "calendar" && (
-            <AdminCalendar bookings={bookings} blocked={blocked} onRefresh={() => loadData(pw)} role={role} adminPw={pw} />
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 0 }}>
+              <div style={{ flex: 1, minWidth: 0, maxWidth: 1152, paddingLeft: 16 }}>
+                <AdminCalendar bookings={bookings} blocked={blocked} onRefresh={() => loadData(pw)} role={role} adminPw={pw} />
+              </div>
+              <DateStrip bookings={bookings} />
+            </div>
           )}
+
+          {/* ── All other tabs — constrained width ── */}
+          {tab !== "calendar" && (
+          <div style={{ maxWidth: 1152, margin: "0 auto", padding: "0 16px" }}>
 
           {/* ── Bookings ── */}
           {tab === "bookings" && (
@@ -1057,6 +1070,9 @@ export default function AdminPage() {
 
           {/* ── Staff ── */}
           {tab === "staff" && <StaffTab pw={pw} />}
+
+          </div>
+          )}{/* end non-calendar constrained wrapper */}
 
         </motion.div>
       </AnimatePresence>
