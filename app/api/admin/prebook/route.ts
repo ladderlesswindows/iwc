@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { assertAdmin } from "@/lib/admin";
+import { shiftDate, extractZip } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
-
-function shiftDate(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
-
-function extractZip(address: string | null | undefined): string | null {
-  if (!address) return null;
-  const m = address.match(/\b(\d{5})\b/);
-  return m ? m[1] : null;
-}
 
 // 1–5 windows = 2h, every 5 over that adds 1h
 function durationHours(windowCount: number): number {

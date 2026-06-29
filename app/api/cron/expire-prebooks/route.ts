@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { shiftDate } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
-
-function shiftDate(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");

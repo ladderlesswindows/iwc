@@ -36,17 +36,19 @@ export function getNextDays(n = 60): string[] {
   return days;
 }
 
-function shiftDate(dateStr: string, days: number): string {
+export function shiftDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 }
 
-function extractZip(address: string | null | undefined): string | null {
+export function extractZip(address: string | null | undefined): string | null {
   if (!address) return null;
   const m = address.match(/\b(\d{5})\b/);
   return m ? m[1] : null;
 }
+
+export const INACTIVE_STATUSES = ["cancelled", "lapsed"] as const;
 
 async function fetchBookedSlots(dates: string[]): Promise<{ date: string; time: string; address: string | null; status: string }[]> {
   const { data } = await supabase

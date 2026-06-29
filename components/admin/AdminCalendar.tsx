@@ -24,7 +24,7 @@ export function AdminCalendar({ bookings, blocked, onRefresh, role = "owner", ad
   const isOwner = role === "owner";
 
   function toEvents() {
-    const bookingEvents = bookings.map((b) => {
+    const bookingEvents = bookings.filter(b => b.status !== "cancelled" && b.status !== "lapsed").map((b) => {
       const town = isOwner ? extractTown(b.address) : null;
       const color = town ? getTownColor(town) : "#7c3aed";
       const isHold = b.status === "hold";
@@ -81,7 +81,7 @@ export function AdminCalendar({ bookings, blocked, onRefresh, role = "owner", ad
     const draggedBooking = bookings.find((b) => `booking-${b.id}` === id);
     const draggedTown = extractTown(draggedBooking?.address);
     const conflict = bookings.find(
-      (b) => b.service_date === newDate && `booking-${b.id}` !== id && b.status !== "cancelled" && extractTown(b.address) !== draggedTown
+      (b) => b.service_date === newDate && `booking-${b.id}` !== id && b.status !== "cancelled" && b.status !== "lapsed" && extractTown(b.address) !== draggedTown
     );
     if (conflict) {
       arg.revert();

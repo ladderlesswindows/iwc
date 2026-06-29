@@ -20,7 +20,7 @@ export function DateStrip({ bookings }: Props) {
   const townByDate: Record<string, string> = {};
   const priceByDate: Record<string, number> = {};
   for (const b of bookings) {
-    if (b.service_date && b.status !== "cancelled") {
+    if (b.service_date && b.status !== "cancelled" && b.status !== "lapsed") {
       const town = extractTown(b.address);
       if (town) townByDate[b.service_date] = town;
       if (b.total_price && b.status !== "hold") priceByDate[b.service_date] = (priceByDate[b.service_date] ?? 0) + b.total_price;
