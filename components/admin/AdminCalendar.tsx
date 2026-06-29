@@ -7,6 +7,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { adminHeader } from "@/lib/admin";
+import { getTownColor, extractTown } from "@/lib/townColors";
 import type { Booking, BlockedSlot } from "@/app/admin/types";
 import type { DateClickArg } from "@fullcalendar/interaction";
 import type { EventClickArg, EventDropArg } from "@fullcalendar/core";
@@ -23,16 +24,20 @@ export function AdminCalendar({ bookings, blocked, onRefresh, role = "owner", ad
   const isOwner = role === "owner";
 
   function toEvents() {
-    const bookingEvents = bookings.map((b) => ({
-      id: `booking-${b.id}`,
-      title: isOwner
-        ? `${b.window_count}w — ${b.address.split(",")[0]}`
-        : "Busy",
-      start: `${b.service_date}T${b.service_time}`,
-      backgroundColor: isOwner ? "#7c3aed" : "#374151",
-      borderColor:     isOwner ? "#6d28d9" : "#4b5563",
-      textColor: "#fff",
-    }));
+    const bookingEvents = bookings.map((b) => {
+      const town = isOwner ? extractTown(b.address) : null;
+      const color = town ? getTownColor(town) : "#7c3aed";
+      return {
+        id: `booking-${b.id}`,
+        title: isOwner
+          ? `${b.window_count}w — ${b.address.split(",")[0]}`
+          : "Busy",
+        start: `${b.service_date}T${b.service_time}`,
+        backgroundColor: isOwner ? color : "#374151",
+        borderColor:     isOwner ? color : "#4b5563",
+        textColor: "#fff",
+      };
+    });
 
     const blockedEvents = blocked.map((bl) => ({
       id: `blocked-${bl.id}`,
