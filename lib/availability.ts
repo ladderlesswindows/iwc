@@ -53,7 +53,7 @@ async function fetchBookedSlots(dates: string[]): Promise<{ date: string; time: 
     .from("bookings")
     .select("service_date, service_time, address, status")
     .in("service_date", dates)
-    .not("status", "in", '("cancelled")');
+    .not("status", "in", '("cancelled","lapsed")');
   return (data ?? []).map((r: { service_date: string; service_time: string; address: string | null; status: string }) => ({
     date: r.service_date,
     time: (r.service_time ?? "").slice(0, 5),

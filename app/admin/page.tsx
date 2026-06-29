@@ -68,6 +68,7 @@ export default function AdminPage() {
   const pending   = bookings.filter(b => b.status === "pending");
   const batched   = bookings.filter(b => b.status === "batched");
   const prebooked = bookings.filter(b => b.status === "prebooked");
+  const lapsed    = bookings.filter(b => b.status === "lapsed").sort((a, b) => b.service_date.localeCompare(a.service_date));
 
   // Leads: prebooks/lead_pending expiring within the 17-day warning window
   const [contactingLead, setContactingLead] = useState<string | null>(null);
@@ -507,6 +508,38 @@ export default function AdminPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+              {/* Lapsed prebooks — expired without confirmation */}
+              {lapsed.length > 0 && (
+                <div style={{ marginTop: 32 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(251,113,133,0.5)", marginBottom: 12 }}>
+                    LAPSED PREBOOKS · {lapsed.length} — READY FOR RE-ENGAGEMENT
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                      <thead>
+                        <tr>
+                          {["Was Scheduled", "Name", "Address", "Win", "Est. Value", "Phone", "Email"].map(h => (
+                            <th key={h} style={S.hdr}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lapsed.map((b, i) => (
+                          <tr key={b.id} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                            <td style={S.cell}>{formatDateFull(b.service_date)}</td>
+                            <td style={{ ...S.cell, color: "white", fontWeight: 500 }}>{b.first_name ?? ""} {b.last_name ?? ""}</td>
+                            <td style={{ ...S.cell, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }}>{b.address}</td>
+                            <td style={{ ...S.cell, textAlign: "center" as const }}>{b.window_count}</td>
+                            <td style={{ ...S.cell, color: "rgba(251,113,133,0.8)", fontWeight: 700 }}>${b.total_price}</td>
+                            <td style={S.cell}>{b.phone ?? "—"}</td>
+                            <td style={S.cell}>{b.email ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

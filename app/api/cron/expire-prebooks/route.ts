@@ -32,10 +32,11 @@ export async function GET(req: NextRequest) {
   const expiring = [...(prebookRes.data ?? []), ...(leadRes.data ?? [])];
   if (!expiring.length) return NextResponse.json({ cancelled: 0 });
 
+  // Prebooks go to "lapsed" (not cancelled) so they're available for re-engagement
   const ids = expiring.map((b) => b.id);
-  await supabase.from("bookings").update({ status: "cancelled" }).in("id", ids);
+  await supabase.from("bookings").update({ status: "lapsed" }).in("id", ids);
 
-  // Cancel sibling HOLDs
+  // Sibling HOLDs just cancel — they're placeholders, not leads
   const holdDates: string[] = [];
   for (const b of expiring) {
     holdDates.push(shiftDate(b.service_date, -1));
