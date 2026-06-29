@@ -17,16 +17,16 @@ interface Props {
 }
 
 export function DateStrip({ bookings }: Props) {
-  // Build date → town map (skip cancelled)
-  const bookingByDate: Record<string, string> = {};
+  const townByDate: Record<string, string> = {};
+  const priceByDate: Record<string, number> = {};
   for (const b of bookings) {
     if (b.service_date && b.status !== "cancelled") {
       const town = extractTown(b.address);
-      if (town) bookingByDate[b.service_date] = town;
+      if (town) townByDate[b.service_date] = town;
+      if (b.total_price) priceByDate[b.service_date] = b.total_price;
     }
   }
 
-  // 2 years of dates from today
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const rows: { date: Date; monthHeader: boolean }[] = [];
@@ -42,75 +42,104 @@ export function DateStrip({ bookings }: Props) {
   }
 
   return (
-    <div style={{
-      width: 128,
-      flexShrink: 0,
-      borderLeft: "1px solid rgba(255,255,255,0.06)",
-      background: "rgba(0,0,0,0.18)",
-    }}>
-      {rows.map(({ date, monthHeader }) => {
-        const dateStr = toLocalDateStr(date);
-        const town = bookingByDate[dateStr];
-        const color = town ? getTownColor(town) : null;
-        const isToday = dateStr === toLocalDateStr(today);
+    <div style={{ display: "flex", flexShrink: 0 }}>
 
-        return (
-          <div key={dateStr}>
-            {monthHeader && (
-              <div style={{
-                padding: "6px 8px 4px",
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.25)",
-                borderTop: "1px solid rgba(255,255,255,0.07)",
-                background: "rgba(255,255,255,0.02)",
-              }}>
-                {MONTH_NAMES[date.getMonth()]} {date.getFullYear()}
-              </div>
-            )}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 8px",
-              height: 22,
-              background: color
-                ? `${color}22`
-                : isToday
-                ? "rgba(255,255,255,0.06)"
-                : undefined,
-              borderLeft: isToday ? "2px solid rgba(255,255,255,0.35)" : color ? `2px solid ${color}88` : "2px solid transparent",
-              transition: "background 0.15s",
-            }}>
-              <span style={{
-                fontSize: 11,
-                fontWeight: isToday ? 800 : town ? 700 : 400,
-                color: color ?? (isToday ? "white" : "rgba(255,255,255,0.25)"),
-                minWidth: 18,
-                textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-              }}>
-                {date.getDate()}
-              </span>
-              {town && (
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: color ?? undefined,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  lineHeight: 1,
+      {/* Date + town column */}
+      <div style={{
+        width: 128,
+        borderLeft: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(0,0,0,0.18)",
+      }}>
+        {rows.map(({ date, monthHeader }) => {
+          const dateStr = toLocalDateStr(date);
+          const town = townByDate[dateStr];
+          const color = town ? getTownColor(town) : null;
+          const isToday = dateStr === toLocalDateStr(today);
+          return (
+            <div key={dateStr}>
+              {monthHeader && (
+                <div style={{
+                  padding: "6px 8px 4px",
+                  fontSize: 9, fontWeight: 800, letterSpacing: "0.15em",
+                  textTransform: "uppercase", color: "rgba(255,255,255,0.25)",
+                  borderTop: "1px solid rgba(255,255,255,0.07)",
+                  background: "rgba(255,255,255,0.02)",
                 }}>
-                  {town}
-                </span>
+                  {MONTH_NAMES[date.getMonth()]} {date.getFullYear()}
+                </div>
               )}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "0 8px", height: 22,
+                background: color ? `${color}22` : isToday ? "rgba(255,255,255,0.06)" : undefined,
+                borderLeft: isToday ? "2px solid rgba(255,255,255,0.35)" : color ? `2px solid ${color}88` : "2px solid transparent",
+              }}>
+                <span style={{
+                  fontSize: 11, fontWeight: isToday ? 800 : town ? 700 : 400,
+                  color: color ?? (isToday ? "white" : "rgba(255,255,255,0.25)"),
+                  minWidth: 18, textAlign: "right", fontVariantNumeric: "tabular-nums",
+                }}>
+                  {date.getDate()}
+                </span>
+                {town && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, color: color ?? undefined,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1,
+                  }}>
+                    {town}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {/* Sale column — total_price rounded to nearest 10, last digit dropped */}
+      <div style={{
+        width: 44,
+        borderLeft: "1px solid rgba(255,255,255,0.04)",
+        background: "rgba(0,0,0,0.12)",
+      }}>
+        {rows.map(({ date, monthHeader }) => {
+          const dateStr = toLocalDateStr(date);
+          const town = townByDate[dateStr];
+          const price = priceByDate[dateStr];
+          const color = town ? getTownColor(town) : null;
+          const saleNum = price != null ? Math.round(price / 10) : null;
+          return (
+            <div key={dateStr}>
+              {monthHeader && (
+                <div style={{
+                  padding: "6px 4px 4px",
+                  fontSize: 9, fontWeight: 800,
+                  color: "transparent",
+                  borderTop: "1px solid rgba(255,255,255,0.07)",
+                  background: "rgba(255,255,255,0.02)",
+                }}>
+                  ·
+                </div>
+              )}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                height: 22,
+                background: color ? `${color}18` : undefined,
+              }}>
+                {saleNum != null && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700,
+                    color: color ? `${color}cc` : undefined,
+                    fontVariantNumeric: "tabular-nums",
+                  }}>
+                    {saleNum}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
     </div>
   );
 }
