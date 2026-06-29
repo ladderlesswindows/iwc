@@ -191,9 +191,6 @@ export default function HomePage() {
   const [promoCode, setPromoCode]       = useState("");
   const [promoEnabled, setPromoEnabled] = useState(false);
 
-  // ── Slot availability (fetched once, passed to both desktop NPC and mobile) ──
-  const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
-  useEffect(() => { getAvailableSlots(selectedZip).then(setSlotMap); }, [selectedZip]);
   useEffect(() => {
     fetch("/api/settings").then(r => r.ok ? r.json() : null).then(d => {
       if (d?.promo_enabled) setPromoEnabled(true);
@@ -204,6 +201,10 @@ export default function HomePage() {
   const [npcPaused, setNpcPaused] = useState(false);
   const [activeStep, setActiveStep] = useState<Step>("location");
   const [selectedZip, setSelectedZip] = useState(DEFAULT_ZIP);
+
+  // ── Slot availability — re-fetched when customer zip changes ──
+  const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
+  useEffect(() => { getAvailableSlots(selectedZip).then(setSlotMap); }, [selectedZip]);
   const [goTrigger, setGoTrigger] = useState(0);
   const [panelVisible, setPanelVisible] = useState(false);
   const [reviewMode, setReviewMode]       = useState(false);
