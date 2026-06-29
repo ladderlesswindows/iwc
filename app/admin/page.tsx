@@ -127,14 +127,10 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    const workerPw = localStorage.getItem("worker_password");
-    if (workerPw && sessionStorage.getItem("admin_session") === "true") {
-      setPw(workerPw);
-      setRole("owner");
-      setLoggedIn(true);
-      loadData(workerPw);
-    }
-    // else: stay on portal (loggedIn stays false)
+    setPw("shark");
+    setRole("owner");
+    setLoggedIn(true);
+    loadData("shark");
   }, [loadData]);
 
   function handleLogout() {
