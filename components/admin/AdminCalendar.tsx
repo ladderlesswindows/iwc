@@ -75,6 +75,17 @@ export function AdminCalendar({ bookings, blocked, onRefresh, role = "owner", ad
     const newDate = newStart.toISOString().split("T")[0];
     const newTime = newStart.toTimeString().slice(0, 5);
 
+    const draggedBooking = bookings.find((b) => `booking-${b.id}` === id);
+    const draggedTown = extractTown(draggedBooking?.address);
+    const conflict = bookings.find(
+      (b) => b.service_date === newDate && `booking-${b.id}` !== id && b.status !== "cancelled" && extractTown(b.address) !== draggedTown
+    );
+    if (conflict) {
+      arg.revert();
+      alert(`Can't move here — ${newDate} already has a ${extractTown(conflict.address) ?? "different-town"} booking.`);
+      return;
+    }
+
     const res = await fetch("/api/admin/bookings", {
       method: "PATCH",
       headers: adminHeader(adminPw),

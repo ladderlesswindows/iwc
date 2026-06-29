@@ -42,13 +42,23 @@ function shiftDate(dateStr: string, days: number): string {
   return d.toISOString().split("T")[0];
 }
 
-async function fetchBookedDates(dates: string[]): Promise<string[]> {
+function extractZip(address: string | null | undefined): string | null {
+  if (!address) return null;
+  const m = address.match(/\b(\d{5})\b/);
+  return m ? m[1] : null;
+}
+
+async function fetchBookedSlots(dates: string[]): Promise<{ date: string; time: string; address: string | null }[]> {
   const { data } = await supabase
     .from("bookings")
-    .select("service_date")
+    .select("service_date, service_time, address")
     .in("service_date", dates)
     .not("status", "in", '("cancelled")');
-  return (data ?? []).map((r: { service_date: string }) => r.service_date);
+  return (data ?? []).map((r: { service_date: string; service_time: string; address: string | null }) => ({
+    date: r.service_date,
+    time: (r.service_time ?? "").slice(0, 5),
+    address: r.address ?? null,
+  }));
 }
 
 export async function fetchAvailability(dates: string[]) {
@@ -69,13 +79,13 @@ export async function fetchAvailability(dates: string[]) {
 export function buildSlotMap(
   dates: string[],
   dbRows: { date: string; time_slot: string | null; is_blocked: boolean }[],
-  fullyBlockedDates: Set<string> = new Set()
+  fullyBlockedDates: Set<string> = new Set(),
+  perDateBlockedTimes: Record<string, Set<string>> = {}
 ) {
   const map: Record<string, string[]> = {};
 
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
   for (const date of dates) {
     if (fullyBlockedDates.has(date)) {
@@ -88,6 +98,12 @@ export function buildSlotMap(
         .filter((r) => r.date === date && r.is_blocked)
         .map((r) => (r.time_slot ?? "").slice(0, 5))
     );
+
+    const bookedTimes = perDateBlockedTimes[date];
+    if (bookedTimes) {
+      for (const t of bookedTimes) blocked.add(t);
+    }
+
     let slots = SLOT_TIMES.filter((t) => !blocked.has(t));
 
     if (date === todayStr || date < MIN_BOOKING_DATE) {
@@ -109,20 +125,31 @@ export function formatPhone(p: string): string {
   return p;
 }
 
-export async function getAvailableSlots() {
+export async function getAvailableSlots(customerZip?: string) {
   const dates = getNextDays();
-  const [rows, bookedDates] = await Promise.all([
+  const [rows, bookedSlots] = await Promise.all([
     fetchAvailability(dates),
-    fetchBookedDates(dates),
+    fetchBookedSlots(dates),
   ]);
 
-  // Block the day before and after every booked date
   const fullyBlocked = new Set<string>();
-  for (const d of bookedDates) {
-    fullyBlocked.add(d);
-    fullyBlocked.add(shiftDate(d, -1));
-    fullyBlocked.add(shiftDate(d, 1));
+  const perDateBlockedTimes: Record<string, Set<string>> = {};
+
+  for (const slot of bookedSlots) {
+    const bookingZip = extractZip(slot.address);
+    const sameZip = customerZip && bookingZip && customerZip === bookingZip;
+
+    if (sameZip) {
+      // Same zip: only block this specific time slot, open the rest of the day
+      if (!perDateBlockedTimes[slot.date]) perDateBlockedTimes[slot.date] = new Set();
+      if (slot.time) perDateBlockedTimes[slot.date].add(slot.time);
+    } else {
+      // Different zip (or unknown): block full day + adjacent days
+      fullyBlocked.add(slot.date);
+      fullyBlocked.add(shiftDate(slot.date, -1));
+      fullyBlocked.add(shiftDate(slot.date, 1));
+    }
   }
 
-  return buildSlotMap(dates, rows, fullyBlocked);
+  return buildSlotMap(dates, rows, fullyBlocked, perDateBlockedTimes);
 }

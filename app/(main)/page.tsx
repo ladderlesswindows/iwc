@@ -193,7 +193,7 @@ export default function HomePage() {
 
   // ── Slot availability (fetched once, passed to both desktop NPC and mobile) ──
   const [slotMap, setSlotMap] = useState<Record<string, string[]>>({});
-  useEffect(() => { getAvailableSlots().then(setSlotMap); }, []);
+  useEffect(() => { getAvailableSlots(selectedZip).then(setSlotMap); }, [selectedZip]);
   useEffect(() => {
     fetch("/api/settings").then(r => r.ok ? r.json() : null).then(d => {
       if (d?.promo_enabled) setPromoEnabled(true);
