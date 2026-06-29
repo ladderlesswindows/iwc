@@ -15,9 +15,14 @@ export async function POST(req: NextRequest) {
   if (!e164) return NextResponse.json({ error: "invalid phone" }, { status: 400 });
 
   const name = first_name ? `, ${first_name}` : "";
-  const body = type === "arrival"
-    ? `Hi${name}! Your Simple Windows crew has arrived and is starting on your windows now. — Simple Windows`
-    : `Hi${name}! Your Simple Windows crew is on the way to ${address}. See you shortly! — Simple Windows`;
+  const body =
+    type === "arrival"
+      ? `Hi${name}! Your Simple Windows crew has arrived and is starting on your windows now. — Simple Windows`
+      : type === "wrapping_up"
+      ? `Hi${name}! Your windows are almost done — we'll be wrapping up and out of your way shortly. — Simple Windows`
+      : type === "finished"
+      ? `Hi${name}! All done! Your windows are clean. Thank you for choosing Simple Windows! — Simple Windows`
+      : `Hi${name}! Your Simple Windows crew is on the way to ${address}. See you shortly! — Simple Windows`;
 
   try {
     const client = twilio(sid, token);
