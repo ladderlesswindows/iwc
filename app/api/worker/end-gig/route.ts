@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const db = getServiceClient();
 
     const review_token = crypto.randomUUID();
-    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.ladderlesswindows.com";
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://iwc-ivory.vercel.app";
     const review_url = `${site}/review/${review_token}`;
 
     let booking: { phone: string | null; first_name: string | null } | null = null;

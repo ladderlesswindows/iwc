@@ -15,7 +15,7 @@ export default function SMSConsentPage() {
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.7 }}>
             Customers provide their mobile phone number and check an explicit SMS consent checkbox during the online booking process at{" "}
             <a href="https://www.simplewindowcleaning.com" style={{ color: "rgba(126,200,227,0.8)" }}>simplewindowcleaning.com</a>{" "}
-            (also accessible at <a href="https://www.ladderlesswindows.com" style={{ color: "rgba(126,200,227,0.8)" }}>ladderlesswindows.com</a>).
+            (also accessible at <a href="https://iwc-ivory.vercel.app" style={{ color: "rgba(126,200,227,0.8)" }}>iwc-ivory.vercel.app</a>).
             Customers must actively check the following checkbox before proceeding to checkout:
           </p>
           <div style={{ margin: "16px 0", padding: "16px 20px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10 }}>

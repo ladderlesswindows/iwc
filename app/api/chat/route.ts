@@ -11,7 +11,7 @@ ABOUT THE BUSINESS:
 - Owner: Chris, based in Santa Cruz, CA.
 - Service: Full-service interior AND exterior premium window cleaning. We do NOT offer gutter cleaning or solar panel cleaning at this time (except on select full estimates).
 - Insurance: $2 million general liability policy through Hiscox. No claims in 25 years. Same contract for 10 years. Detailed safety protocols and documentation protect the homeowner.
-- Booking: Fully online at ladderlesswindows.com (also SimpleWindowCleaning.com and InstantWindowCleaning.com). Select your ZIP, pick a date and time, enter how many windows, add your address and contact info — done. No phone call needed. Also reachable via QR code on vehicles and flyers.
+- Booking: Fully online at simplewindowcleaning.com (also InstantWindowCleaning.com). Select your ZIP, pick a date and time, enter how many windows, add your address and contact info — done. No phone call needed. Also reachable via QR code on vehicles and flyers.
 - Payment: All payments through PayPal in the app. Price is confirmed before booking. 100% satisfaction guaranteed. Tips go 100% to the worker.
 
 PRICING:

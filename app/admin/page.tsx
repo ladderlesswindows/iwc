@@ -558,7 +558,7 @@ export default function AdminPage() {
               )}
               {completions.map(c => {
                 const name = [c.bookings?.first_name, c.bookings?.last_name].filter(Boolean).join(" ");
-                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ladderlesswindows.com";
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.simplewindowcleaning.com";
                 const reviewUrl = `${siteUrl}/review/${c.review_token}`;
                 const statusColor =
                   c.review_status === "approved" ? "rgba(126,200,227,0.7)" :

@@ -1381,7 +1381,7 @@ export default function JobCloseout() {
                 Your windows look amazing. We appreciate your business and look forward to seeing you again.
               </p>
               <p style={{ fontSize: 10, color: "#B0C8D4", margin: 0, lineHeight: 1.5 }}>
-                Simple Window Cleaning · ladderlesswindows.com
+                Simple Window Cleaning · simplewindowcleaning.com
               </p>
             </div>
           </div>
